@@ -18,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 
   final _userCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
+  final _UserIdCtrl = TextEditingController();
   bool _obscure = true;
   bool _loading = false;
   String? _errorMsg;
@@ -43,7 +44,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   void dispose() {
     _bgController.dispose();
     _formController.dispose();
-    _userCtrl.dispose();
+    // _userCtrl.dispose();
+    _UserIdCtrl.dispose();
     _passCtrl.dispose();
     super.dispose();
   }
@@ -54,8 +56,12 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
 final AuthService _apiService = AuthService();
 
 Future<void> _login() async {
-  if (_userCtrl.text.trim().isEmpty || _passCtrl.text.isEmpty) {
-    setState(() => _errorMsg = 'Please enter username and password');
+
+  // Validation
+  if (_UserIdCtrl.text.trim().isEmpty || _passCtrl.text.trim().isEmpty) {
+    setState(() {
+      _errorMsg = "Please enter UserId and Password";
+    });
     return;
   }
 
@@ -65,49 +71,75 @@ Future<void> _login() async {
   });
 
   try {
+
     final data = await _apiService.login(
-      _userCtrl.text.trim(),
+      _UserIdCtrl.text.trim(), // ✅ fixed
       _passCtrl.text.trim(),
-      _selectedShowroom == ShowroomType.arena ? 'arena' : 'nexa',
+      _selectedShowroom == ShowroomType.arena
+          ? 'arena'
+          : 'nexa',
     );
 
     if (data != null) {
+
       final prefs = await SharedPreferences.getInstance();
 
       await prefs.setBool("isLogin", true);
       await prefs.setString("token", data['token'] ?? "");
 
-      // ✅ FIXED KEYS
       await prefs.setString("UserName", data['username'] ?? "");
       await prefs.setString("userId", data['userID'] ?? "");
       await prefs.setString("role", data['role'] ?? "");
-       await prefs.setString("locationCode", data['loc_Code'] ?? "");
-       await prefs.setString("showroomType", data['showroomType'] ?? "");
-      // 👉 Navigate
+      await prefs.setString("locationCode", data['loc_Code'] ?? "");
+      await prefs.setString("showroomType", data['showroomType'] ?? "");
+
+      setState(() {
+        _loading = false;
+      });
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (_) => CustomerQuoteScreen(
-            userName: data['username'],   // pass here
-            // showroomType: data['showroomType'], // pass here
+            userName: data['username'] ?? "",
           ),
         ),
       );
+
     } else {
+
       setState(() {
-        _errorMsg = "Invalid username or password";
+        _errorMsg = "Invalid UserId or Password";
         _loading = false;
       });
+
     }
+
   } catch (e) {
-    print("ERROR → $e"); // 👈 add this for debugging
+
+    print("LOGIN ERROR => $e");
 
     setState(() {
-      _errorMsg = "Server error or parsing issue";
+
+      // Backend validation message
+      if (e.toString().contains("401")) {
+        _errorMsg = "Invalid UserId or Password";
+      }
+
+      // SQL / Server error
+      else if (e.toString().contains("500")) {
+        _errorMsg = "Server Error";
+      }
+
+      else {
+        _errorMsg = e.toString();
+      }
+
       _loading = false;
     });
   }
 }
+
 
 
 
@@ -133,43 +165,76 @@ Future<void> _login() async {
           ),
           child: child,
         ),
+
+
+
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
-            child: FadeTransition(
-              opacity: _fadeAnim,
-              child: SlideTransition(
-                position: _slideAnim,
-                child: Column(
-                  children: [
-                    const SizedBox(height: 30),
-                    _logoSection(accentColor, isArena),
-                    const SizedBox(height: 40),
-                    _showroomToggle(),
-                    const SizedBox(height: 32),
-                    _loginCard(accentColor, isArena),
-                    const SizedBox(height: 24),
-                    Text('Powered by Prem Motors Group',
-                        style: GoogleFonts.poppins(color: Colors.white.withOpacity(0.4), fontSize: 12)),
-                  ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight,
+                ),
+                child: IntrinsicHeight(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 20,
+                    ),
+                    child: FadeTransition(
+                      opacity: _fadeAnim,
+                      child: SlideTransition(
+                        position: _slideAnim,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _logoSection(accentColor, isArena),
+
+                            const SizedBox(height: 30),
+
+                            _showroomToggle(),
+
+                            const SizedBox(height: 24),
+
+                            _loginCard(accentColor, isArena),
+
+                            const Spacer(),
+
+                            Padding(
+                              padding: const EdgeInsets.only(top: 20),
+                              child: Text(
+                                'Powered by Prem Motors Group',
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white.withOpacity(0.4),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         ),
+      ),
       ),
     );
   }
 
   Widget _logoSection(Color accentColor, bool isArena) => Column(children: [
     Container(
-      width: 80, height: 80,
+      width: 90, height: 90,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(color: accentColor, width: 2),
         gradient: LinearGradient(colors: [accentColor.withOpacity(0.2), accentColor.withOpacity(0.05)]),
       ),
-      child: Center(child: Icon(isArena ? Icons.directions_car_rounded : Icons.star_rounded, color: accentColor, size: 36)),
+      child: Center(child: Icon(isArena ? Icons.directions_car_rounded : Icons.directions_car_rounded, color: accentColor, size: 36)),
     ),
     const SizedBox(height: 20),
     Text(isArena ? 'ARENA' : 'NEXA',
@@ -222,11 +287,11 @@ Future<void> _login() async {
       boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 30, offset: const Offset(0, 10))],
     ),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Welcome Back', style: GoogleFonts.montserrat(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
-      const SizedBox(height: 4),
+      // Text('Welcome Back', style: GoogleFonts.montserrat(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white)),
+      // const SizedBox(height: 4),
       Text('Sign in to your account', style: GoogleFonts.poppins(fontSize: 13, color: Colors.white.withOpacity(0.5))),
       const SizedBox(height: 28),
-      _inputField(controller: _userCtrl, label: 'Username', icon: Icons.person_outline_rounded, accentColor: accentColor),
+      _inputField(controller: _UserIdCtrl, label: 'UserId', icon: Icons.person_outline_rounded, accentColor: accentColor),
       const SizedBox(height: 16),
       _inputField(
         controller: _passCtrl, label: 'Password', icon: Icons.lock_outline_rounded,
@@ -261,13 +326,13 @@ Future<void> _login() async {
           onPressed: _loading ? null : _login,
           style: ElevatedButton.styleFrom(
             backgroundColor: accentColor,
-            foregroundColor: isArena ? AppColors.arenaNavy : Colors.white,
+            foregroundColor: isArena ? AppColors.arenaNavy : const Color.fromARGB(255, 11, 1, 1),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             elevation: 0,
           ),
           child: _loading
               ? const SizedBox(width: 22, height: 22,
-                  child: CircularProgressIndicator(strokeWidth: 2.5, valueColor: AlwaysStoppedAnimation(Colors.white)))
+                  child: CircularProgressIndicator(strokeWidth: 2.5, valueColor: AlwaysStoppedAnimation(Color.fromARGB(255, 27, 3, 3))))
               : Text('SIGN IN', style: GoogleFonts.montserrat(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 2)),
         ),
       ),

@@ -123,10 +123,10 @@ class QuoteData {
 Future<void> generatePdf(QuoteData data) async {
   final pdf = pw.Document();
 
-  final premLogo = await imageFromAssetBundle('assets/images/logo.png');
+  final premLogo = await imageFromAssetBundle('assets/images/marutinexa.jpeg');
   final footerBanner = await imageFromAssetBundle(
     data.showroomType == 'Nexa'
-        ? 'assets/images/logo.png'
+        ? 'assets/images/marutinexa.jpeg'
         : 'assets/images/Arenabottom.png',
   );
 
@@ -323,11 +323,11 @@ pw.Widget _termsSection() => pw.Column(
       children: [
         pw.Text('Terms and Conditions:',
             style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-        _term('1. All Products are as per company standards.'),
-        _term('2. Delivery subject to availability.'),
-        _term('3. Price applicable at invoicing date.'),
-        _term('4. Delivery only after full payment.'),
-        _term('5. Jurisdiction applicable.'),
+        _term('1. All Products are as per companys  standard  specifications'),
+        _term('2. Delivery of Vehicle Model/Color/Variant is subject to availability and force Majure clause or may be delayed due to supply constaints from the Manufacturer Maruti Suzuki India Ltd.'),
+        _term('3. Price and Offers are applicable at the time of Invoicing and will be applicable, irrespective when the order was placed and or accepted by us.'),
+        _term('4. Delivery will be done with full payment received only either RTGS/NEFT/DD/BANK LOAN PAYMENT. We will not Delivery any Car on short payment in any means.'),
+        _term('5. All Disputes Subjected to Location Jurisdiction only.'),
       ],
     );
 

@@ -5,6 +5,17 @@ import 'package:sales_quote_arnexa/screens/login_screen.dart';
 import 'package:sales_quote_arnexa/screens/pdf_screen.dart';
 import 'package:sales_quote_arnexa/services/auth_service.dart';
 import 'package:sales_quote_arnexa/models/price_model.dart';
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+
+
+
 
 class CustomerQuoteScreen extends StatefulWidget {
   final String userName;
@@ -20,6 +31,7 @@ class _CustomerQuoteScreenState extends State<CustomerQuoteScreen> {
    String userId = "";
    String? locationCode;
    String? showroomType = "";
+   
   //  final String modelGroup;
   /// 🔹 BASIC CONTROLLERS
   final nameController = TextEditingController();
@@ -83,6 +95,9 @@ class _CustomerQuoteScreenState extends State<CustomerQuoteScreen> {
 
  /// ================= API LOAD =================
 final AuthService apiService = AuthService();
+
+
+
 void loadData() async {
   allData = await apiService.getAllData();
 
@@ -186,11 +201,14 @@ Future<void> fetchDepartments(String corporate) async {
   }
 }
 
+Future<int?> saveData() async {
 
-Future<void> saveData() async {
-  if (!_formKey.currentState!.validate()) return;
+  if (!_formKey.currentState!.validate()) {
+    return null;
+  }
 
   final body = {
+
     "CustName": nameController.text.trim(),
     "PhoneNo": phoneController.text.trim(),
     "Email": emailController.text.trim(),
@@ -201,110 +219,241 @@ Future<void> saveData() async {
     "Model_with_Type": selectedVariantCode,
     "Colour": color,
     "Profession": profession,
+
     "ExShowroomPrice":
-        double.tryParse(exShowroomController.text) ?? 0,
+        double.tryParse(
+          exShowroomController.text,
+        ) ?? 0,
+
     "CorporateName": corporate,
     "DeptName": department,
-    "MCDParkingCharges": parking == "Yes" ? 1 : 0,
+
+    "MCDParkingCharges":
+        parking == "Yes" ? 1 : 0,
+
     "CorporateOffer":
-        double.tryParse(txtCorporateOfferController.text) ?? 0,
+        double.tryParse(
+          txtCorporateOfferController.text,
+        ) ?? 0,
+
     "InsurancePer": 0,
-    "FastTag": fastag == "Yes" ? 1 : 0,
+
+    "FastTag":
+        fastag == "Yes" ? 1 : 0,
+
     "InsuranceAmt":
-        double.tryParse(txtInsAmtController.text) ?? 0,
+        double.tryParse(
+          txtInsAmtController.text,
+        ) ?? 0,
+
     "AccessoriesPer": 0,
+
     "AccessoriesAmt":
-        double.tryParse(txtMGAAmtController.text) ?? 0,
+        double.tryParse(
+          txtMGAAmtController.text,
+        ) ?? 0,
+
     "RTOPer": 0,
+
     "RTOAmt":
-        double.tryParse(txtRTOAmtController.text) ?? 0,
+        double.tryParse(
+          txtRTOAmtController.text,
+        ) ?? 0,
+
     "WarrantyPer": 0,
+
     "WarrantyAmt":
-        double.tryParse(txtEWAmountController.text) ?? 0,
+        double.tryParse(
+          txtEWAmountController.text,
+        ) ?? 0,
+
     "ConsumerOffer": 0,
+
     "ConsumerOfferAmt":
-        double.tryParse(txtConsumerOfferController.text) ?? 0,
-     "ExchangePer": 0,
+        double.tryParse(
+          txtConsumerOfferController.text,
+        ) ?? 0,
+
+    "ExchangePer": 0,
+
     "ExchangeAmt":
-        double.tryParse(txtExchangAmtController.text) ?? 0,
+        double.tryParse(
+          txtExchangAmtController.text,
+        ) ?? 0,
+
     "AdditionalDisAmt":
-        double.tryParse(txtAddDisController.text) ?? 0,
+        double.tryParse(
+          txtAddDisController.text,
+        ) ?? 0,
+
     "FinanceBank": bank,
-    "Tenure": int.tryParse(tenureController.text) ?? 0,
-    "InterestType": interestController.text,
-    "LoanPer": double.tryParse(
-            percent?.replaceAll("%", "") ?? "0") ??
-        0,
+
+    "Tenure":
+        int.tryParse(
+          tenureController.text,
+        ) ?? 0,
+
+    "InterestType":
+        interestController.text,
+
+    "LoanPer":
+        double.tryParse(
+          percent?.replaceAll("%", "") ?? "0",
+        ) ?? 0,
+
     "Loanamount":
-        double.tryParse(loanAmountController.text) ?? 0,
-    "EMI": double.tryParse(emiController.text) ?? 0,
+        double.tryParse(
+          loanAmountController.text,
+        ) ?? 0,
+
+    "EMI":
+        double.tryParse(
+          emiController.text,
+        ) ?? 0,
+
     "IsActive": true
   };
 
-  final success = await apiService.submitData(body);
-  if (success) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("✅ Data Saved Successfully")),
+  final response = await apiService.submitData(body);
+
+  if (response != null &&
+      response["success"] == true) {
+
+    int custId = response["custId"];
+
+    ScaffoldMessenger.of(context)
+        .showSnackBar(
+      const SnackBar(
+        content: Text(
+          "✅ Data Saved Successfully",
+        ),
+      ),
     );
 
-    void clearForm() {
-    // 🔹 Text fields
-    nameController.clear();
-    phoneController.clear();
-    emailController.clear();
-    cityController.clear();
-    exShowroomController.clear();
-    txtCorporateOfferController.clear();
-    txtInsAmtController.clear();
-    txtMGAAmtController.clear();
-    txtRTOAmtController.clear();
-    txtEWAmountController.clear();
-    txtConsumerOfferController.clear();
-    txtExchangAmtController.clear();
-    txtAddDisController.clear();
-    tenureController.clear();
-    interestController.clear();
-    loanAmountController.clear();
-    emiController.clear();
-
-  // 🔹 Dropdowns reset
-  setState(() {
-    customerType = null;
-    model = "Select Model With Fuel";
-    selectedVariant = "Select Variant Name";
-    selectedVariantCode = "Select Variant Code";
-    color = null;
-    profession = null;
-    corporate = null;
-    department = null;
-    parking = null;
-    fastag = null;
-    insurance = null;
-    accessories = null;
-    rto = null;
-    warranty = null;
-    consumerOffer = null;
-    exchange = null;
-    addDiscount = null;
-    financier = null;
-    bank = null;
-    financeOn = null;
-    percent = null;
-    isFinance = false;
-  });
-} // reset form
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("❌ Failed to save data")),
-    );
+    return custId;
   }
+
+  ScaffoldMessenger.of(context)
+      .showSnackBar(
+    const SnackBar(
+      content: Text(
+        "❌ Failed to save data",
+      ),
+    ),
+  );
+
+  return null;
 }
+// Future<void> saveData() async {
+//   if (!_formKey.currentState!.validate()) return;
+
+//   final body = {
+//     "CustName": nameController.text.trim(),
+//     "PhoneNo": phoneController.text.trim(),
+//     "Email": emailController.text.trim(),
+//     "City": cityController.text.trim(),
+//     "CustType": customerType,
+//     "Model": model,
+//     "Variant": selectedVariant,
+//     "Model_with_Type": selectedVariantCode,
+//     "Colour": color,
+//     "Profession": profession,
+//     "ExShowroomPrice": double.tryParse(exShowroomController.text) ?? 0,
+//     "CorporateName": corporate,
+//     "DeptName": department,
+//     "MCDParkingCharges": parking == "Yes" ? 1 : 0,
+//     "CorporateOffer":  double.tryParse(txtCorporateOfferController.text) ?? 0,
+//     "InsurancePer": 0,
+//     "FastTag": fastag == "Yes" ? 1 : 0,
+//     "InsuranceAmt": double.tryParse(txtInsAmtController.text) ?? 0,
+//     "AccessoriesPer": 0,
+//     "AccessoriesAmt": double.tryParse(txtMGAAmtController.text) ?? 0,
+//     "RTOPer": 0,
+//     "RTOAmt": double.tryParse(txtRTOAmtController.text) ?? 0,
+//     "WarrantyPer": 0,
+//     "WarrantyAmt": double.tryParse(txtEWAmountController.text) ?? 0,
+//     "ConsumerOffer": 0,
+//     "ConsumerOfferAmt": double.tryParse(txtConsumerOfferController.text) ?? 0,
+//      "ExchangePer": 0,
+//     "ExchangeAmt": double.tryParse(txtExchangAmtController.text) ?? 0,
+//     "AdditionalDisAmt": double.tryParse(txtAddDisController.text) ?? 0,
+//     "FinanceBank": bank,
+//     "Tenure": int.tryParse(tenureController.text) ?? 0,
+//     "InterestType": interestController.text,
+//     "LoanPer": double.tryParse(
+//             percent?.replaceAll("%", "") ?? "0") ??
+//         0,
+//     "Loanamount": double.tryParse(loanAmountController.text) ?? 0,
+//     "EMI": double.tryParse(emiController.text) ?? 0,
+//     "IsActive": true
+//   };
+
+//   final success = await apiService.submitData(body);
+  
+//   if (success) {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       const SnackBar(content: Text("✅ Data Saved Successfully")),
+//     );
+
+//     void clearForm() {
+//     // 🔹 Text fields
+//     nameController.clear();
+//     phoneController.clear();
+//     emailController.clear();
+//     cityController.clear();
+//     exShowroomController.clear();
+//     txtCorporateOfferController.clear();
+//     txtInsAmtController.clear();
+//     txtMGAAmtController.clear();
+//     txtRTOAmtController.clear();
+//     txtEWAmountController.clear();
+//     txtConsumerOfferController.clear();
+//     txtExchangAmtController.clear();
+//     txtAddDisController.clear();
+//     tenureController.clear();
+//     interestController.clear();
+//     loanAmountController.clear();
+//     emiController.clear();
+
+//   // 🔹 Dropdowns reset
+//   setState(() {
+//     customerType = null;
+//     model = "Select Model With Fuel";
+//     selectedVariant = "Select Variant Name";
+//     selectedVariantCode = "Select Variant Code";
+//     color = null;
+//     profession = null;
+//     corporate = null;
+//     department = null;
+//     parking = null;
+//     fastag = null;
+//     insurance = null;
+//     accessories = null;
+//     rto = null;
+//     warranty = null;
+//     consumerOffer = null;
+//     exchange = null;
+//     addDiscount = null;
+//     financier = null;
+//     bank = null;
+//     financeOn = null;
+//     percent = null;
+//     isFinance = false;
+//   });
+// } // reset form
+//   } else {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       const SnackBar(content: Text("❌ Failed to save data")),
+//     );
+//   }
+// }
 
   @override
   void initState() {
     super.initState();
     loadData();
     loadUserData();
+    loadShowroomType();
     loadFinancers();
     txtAddDisController.text = "0";
     txtExchangAmtController.text = "0";
@@ -382,7 +531,13 @@ Future<void> saveData() async {
 
 
 
+Future<void> loadShowroomType() async {
+  final prefs = await SharedPreferences.getInstance();
 
+  setState(() {
+    showroomType = prefs.getString("showroomType") ?? "";
+  });
+}
 Future<void> loadUserData() async {
   final prefs = await SharedPreferences.getInstance();
   setState(() {
@@ -440,6 +595,878 @@ Future<void> loadUserData() async {
   }
  /// ================= LOGOUT End =================
  
+Future<String> generatePdfSave(
+  QuoteData data,
+  int custId,
+) async {
+
+  final pdf = pw.Document();
+
+  
+  final footerBanner = await imageFromAssetBundle(showroomType == 'Nexa'
+        ? 'assets/images/newnexalogo.png'
+        : 'assets/images/marutinexa.jpeg',
+  );
+
+  pdf.addPage(
+    pw.Page(
+
+      pageFormat: PdfPageFormat.a4,
+
+      margin: const pw.EdgeInsets.all(8),
+
+      build: (context) {
+
+        return pw.Container(
+
+          decoration: pw.BoxDecoration(
+            border: pw.Border.all(
+              width: 1,
+              color: PdfColors.black,
+            ),
+          ),
+
+          child: pw.Column(
+
+            crossAxisAlignment:
+                pw.CrossAxisAlignment.start,
+
+            children: [
+
+              // =========================
+              // HEADER
+              // =========================
+
+              pw.Container(
+                  color: data.showroomType == 'Nexa'
+                  ? PdfColors.black
+                  : PdfColors.white,
+                padding:
+                    const pw.EdgeInsets.all(10),
+
+                child: pw.Column(
+
+                  children: [
+
+                    pw.Row(
+
+                      mainAxisAlignment:
+                          pw.MainAxisAlignment
+                              .spaceBetween,
+
+                      crossAxisAlignment:
+                          pw.CrossAxisAlignment.start,
+
+                      children: [
+                        pw.Text(
+                          data.showroomType == 'Nexa'
+                              ? 'N E X A'
+                              : 'MARUTI SUZUKI ARENA',
+
+                          style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize: 12,
+
+                          // TEXT COLOR
+                          color: data.showroomType == 'Nexa'
+                              ? PdfColors.white
+                              : PdfColors.black,
+                        ),
+                      ),
+
+
+
+                        pw.Image(
+                          footerBanner,
+                          width: 50,
+                        ),
+                      ],
+                    ),
+
+                    pw.SizedBox(height: 15),
+
+                    pw.Text(
+                      "PREM MOTORS PVT. LTD.",
+
+                      style: pw.TextStyle(
+                        fontWeight: pw.FontWeight.bold,
+                        fontSize: 22,
+
+                        color: data.showroomType == 'Nexa'
+                            ? PdfColors.white
+                            : PdfColors.black,
+                      ),
+                    ),
+
+                    pw.Text(
+                      "(Authorised Maruti Suzuki Dealer)",
+
+                      style: pw.TextStyle(
+                      fontSize: 9,
+
+                      color: data.showroomType == 'Nexa'
+                          ? PdfColors.white
+                          : PdfColors.black,
+                    ),
+                    ),
+
+                    pw.Text(
+                      "Location Address : ${data.locationAddress}",
+
+                      style: pw.TextStyle(
+                        fontSize: 8,
+
+                        color: data.showroomType == 'Nexa'
+                            ? PdfColors.white
+                            : PdfColors.black,
+                      ),
+                    ),
+
+                    pw.Text(
+                    "City : ${data.locationCity}, Pincode : ${data.locationPincode}",
+
+                    style: pw.TextStyle(
+                      fontSize: 8,
+
+                      color: data.showroomType == 'Nexa'
+                          ? PdfColors.white
+                          : PdfColors.black,
+                    ),
+                  ),
+
+                  pw.Text(
+                    "Contact No : ${data.contactPhone} Email : ${data.locationEmail}",
+
+                    style: pw.TextStyle(
+                      fontSize: 8,
+
+                      color: data.showroomType == 'Nexa'
+                          ? PdfColors.white
+                          : PdfColors.black,
+                    ),
+                  ),
+
+                  pw.Text(
+                    "Website : www.premmotors.com",
+
+                    style: pw.TextStyle(
+                      fontSize: 8,
+
+                      color: data.showroomType == 'Nexa'
+                          ? PdfColors.white
+                          : PdfColors.blue,
+                    ),
+                  ),
+                  ],
+                ),
+              ),
+
+
+
+
+
+              // =========================
+              // CUSTOMER DETAILS
+              // =========================
+
+              pw.Table(
+
+                border: pw.TableBorder.all(),
+
+                columnWidths: {
+
+                  0: const pw.FlexColumnWidth(1),
+                  1: const pw.FlexColumnWidth(1),
+                },
+
+                children: [
+
+                  buildRow(
+                    "Customer Name: ${data.customerName}",
+                    "Quotation Date: ${data.quotationDate}",
+                  ),
+
+                  buildRow(
+                    "Contact No: ${data.contactNo}",
+                    "Email: ${data.email}",
+                  ),
+
+                  buildRow(
+                    "City: ${data.city}",
+                    "Profession Type:${data.professionType}",
+                  ),
+
+                  buildRow(
+                    "Corporate Name:${data.corporateName}",
+                    "Department Name:${data.departmentName}",
+                  ),
+                ],
+              ),
+
+              // =========================
+              // RM BAR
+              // =========================
+
+              pw.Container(
+
+                color: PdfColors.grey300,
+
+                padding:
+                    const pw.EdgeInsets.all(5),
+
+                child: pw.Row(
+
+                  mainAxisAlignment:
+                      pw.MainAxisAlignment
+                          .spaceBetween,
+
+                  children: [
+
+                    pw.Text(
+                      "RM (M.): ${data.rmName} (${data.rmPhone})",
+
+                      style: pw.TextStyle(
+                        fontWeight:
+                            pw.FontWeight.bold,
+                      ),
+                    ),
+
+                    pw.Text(
+                      "SRM (M.): (${data.srmPhone})",
+
+                      style: pw.TextStyle(
+                        fontWeight:
+                            pw.FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // =========================
+              // TITLE
+              // =========================
+
+              pw.Center(
+
+                child: pw.Padding(
+
+                  padding:
+                      const pw.EdgeInsets.all(5),
+
+                  child: pw.Text(
+
+                    "PERFORMA INVOICE",
+
+                    style: pw.TextStyle(
+                      fontWeight:
+                          pw.FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+
+              // =========================
+              // VEHICLE DETAILS
+              // =========================
+
+              pw.Table(
+
+                border: pw.TableBorder.all(),
+
+                children: [
+
+                  buildRow(
+                    "Model With Fuel: ${data.modelWithFuel}",
+                    "Variant: ${data.variant}",
+                  ),
+
+                  buildRow(
+                    "Color: ${data.color}",
+                    "Customer/Financier Type: ${data.customerFinancierType}",
+                  ),
+                ],
+              ),
+
+              // =========================
+              // PRICE BREAKUP TITLE
+              // =========================
+
+              pw.Center(
+
+                child: pw.Padding(
+
+                  padding:
+                      const pw.EdgeInsets.all(5),
+
+                  child: pw.Text(
+
+                    "PRICE BREAK-UP",
+
+                    style: pw.TextStyle(
+                      fontWeight:
+                          pw.FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+
+              // =========================
+              // PRICE TABLE
+              // =========================
+
+              pw.Table(
+
+                border: pw.TableBorder.all(),
+
+                children: [
+
+                  priceRow(
+                    "Ex-Showroom Price:",
+                    data.exShowroom,
+                  ),
+
+                  priceRow(
+                    "Insurance:",
+                    data.insurance,
+                  ),
+
+                  priceRow(
+                    "EW + CCP Platinum (2Yr.):",
+                    data.ewCcpAmount,
+                  ),
+
+                  priceRow(
+                    "MSGA:",
+                    data.mgaOrGna,
+                  ),
+
+                  priceRow(
+                    "Registration/TRC:",
+                    data.rtoAmount,
+                  ),
+
+                  priceRow(
+                    "FASTag:",
+                    data.fasTag,
+                  ),
+
+                  priceRow(
+                    "HPN Charges:",
+                    data.hpnCharges,
+                  ),
+
+                  priceRow(
+                    "1% TCS:",
+                    data.tcsPct,
+                  ),
+
+                  priceRow(
+                    "MCD Parking:",
+                    data.mcdParking,
+                  ),
+
+                  highlightRow(
+                    "On Road Price Without Offers:",
+                    data.onRoadWithoutOffers,
+                  ),
+
+                  priceRow(
+                    "Corporate Offer:",
+                    data.corporateOffer,
+                  ),
+
+                  priceRow(
+                    "Consumer Offer:",
+                    data.consumerOffer,
+                  ),
+
+                  priceRow(
+                    "Exchange Offer:",
+                    data.exchangeOffer,
+                  ),
+
+                  priceRow(
+                    "Addnl. Discount:",
+                    data.addnlDiscount,
+                  ),
+
+                  highlightRow(
+                    "On Road Price After Applicable Offers:",
+                    data.onRoadAfterOffers,
+                  ),
+                ],
+              ),
+
+              // =========================
+              // EMI TITLE
+              // =========================
+
+              pw.Center(
+
+                child: pw.Padding(
+
+                  padding:
+                      const pw.EdgeInsets.all(5),
+
+                  child: pw.Text(
+
+                    "EMI Details",
+
+                    style: pw.TextStyle(
+                      fontWeight:
+                          pw.FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+
+              // =========================
+              // EMI TABLE
+              // =========================
+
+              pw.Table(
+
+                border: pw.TableBorder.all(),
+
+                children: [
+
+                  buildRow(
+                    "Finance On: ${data.financeOn}",
+                    "Loan Amount: ${data.loanAmount}",
+                  ),
+
+                  buildRow(
+                    "ROI: ${data.roi}%",
+                    "Tenure in Years: ${data.tenureYears}",
+                  ),
+
+                  buildRow(
+                    "EMI Amount: ${data.emiAmount}",
+                    "* ROI Will Subject to change as per CIBIL score.",
+                  ),
+                ],
+              ),
+
+              // =========================
+              // TERMS
+              // =========================
+
+              pw.Padding(
+
+                padding:
+                    const pw.EdgeInsets.all(5),
+
+                child: pw.Column(
+
+                  crossAxisAlignment:
+                      pw.CrossAxisAlignment.start,
+
+                  children: [
+
+                    pw.Text(
+
+                      "Terms and Conditions:",
+
+                      style: pw.TextStyle(
+                        fontWeight:
+                            pw.FontWeight.bold,
+                      ),
+                    ),
+
+                    pw.Text(
+                      "1. All Products are as per company's standard specifications.",
+                      style: const pw.TextStyle(fontSize: 8),
+                    ),
+
+                    pw.Text(
+                      "2. Delivery of Vehicle Model/Color/Variant is subject to availability and force Majure clause or may be delayed due to supply constaints from the Manufacturer Maruti Suzuki India Ltd.",
+                      style: const pw.TextStyle(fontSize: 8),
+                    ),
+
+                    pw.Text(
+                      "3.  Price and Offers are applicable at the time of Invoicing and will be applicable, irrespective when the order was placed and or accepted by us.",
+                      style: const pw.TextStyle(fontSize: 8),
+                    ),
+
+                    pw.Text(
+                      "4.  Delivery will be done with full payment received only either RTGS/NEFT/DD/BANK LOAN PAYMENT. We will not Delivery any Car on short payment in any means.",
+                      style: const pw.TextStyle(fontSize: 8),
+                    ),
+
+                    pw.Text(
+                      "5.  All Disputes Subjected to Location Jurisdiction only.",
+                      style: const pw.TextStyle(fontSize: 8),
+                    ),
+                  ],
+                ),
+              ),
+
+              // =========================
+              // BANK DETAILS
+              // =========================
+
+              pw.Padding(
+
+                padding:
+                    const pw.EdgeInsets.all(5),
+
+                child: pw.Column(
+
+                  crossAxisAlignment:
+                      pw.CrossAxisAlignment.start,
+
+                  children: [
+
+                    bankRow(
+                      "Bank Name",
+                      data.bankName,
+                    ),
+
+                    bankRow(
+                      "Beneficiary",
+                      data.beneficiary,
+                    ),
+
+                    bankRow(
+                      "Account Number",
+                      data.accountNumber,
+                    ),
+
+                    bankRow(
+                      "IFSC Code",
+                      data.ifscCode,
+                    ),
+
+                    bankRow(
+                      "Branch Name",
+                      data.branchName,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+
+  final dir = await getApplicationDocumentsDirectory();
+
+  final file = File("${dir.path}/$custId.pdf");
+
+  await file.writeAsBytes(
+    await pdf.save(),
+  );
+
+  return file.path;
+}
+
+
+
+// =========================
+// TABLE ROW
+// =========================
+
+pw.TableRow buildRow(
+    String left,
+    String right) {
+
+  return pw.TableRow(
+
+    children: [
+
+      pw.Padding(
+
+        padding:
+            const pw.EdgeInsets.all(4),
+
+        child: pw.Text(
+          left,
+          style: const pw.TextStyle(
+            fontSize: 8,
+          ),
+        ),
+      ),
+
+      pw.Padding(
+
+        padding:
+            const pw.EdgeInsets.all(4),
+
+        child: pw.Text(
+          right,
+          style: const pw.TextStyle(
+            fontSize: 8,
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+
+
+// =========================
+// PRICE ROW
+// =========================
+
+pw.TableRow priceRow(
+    String label,
+    double value) {
+
+  return pw.TableRow(
+
+    children: [
+
+      pw.Padding(
+
+        padding:
+            const pw.EdgeInsets.all(4),
+
+        child: pw.Text(
+          label,
+          style: const pw.TextStyle(
+            fontSize: 8,
+          ),
+        ),
+      ),
+
+      pw.Padding(
+
+        padding:
+            const pw.EdgeInsets.all(4),
+
+        child: pw.Align(
+
+          alignment:
+              pw.Alignment.centerRight,
+
+          child: pw.Text(
+            value.toStringAsFixed(0),
+
+            style: const pw.TextStyle(
+              fontSize: 8,
+            ),
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+
+
+// =========================
+// HIGHLIGHT ROW
+// =========================
+
+pw.TableRow highlightRow(
+    String label,
+    double value) {
+
+  return pw.TableRow(
+
+    decoration: const pw.BoxDecoration(
+      color: PdfColors.grey300,
+    ),
+
+    children: [
+
+      pw.Padding(
+
+        padding:
+            const pw.EdgeInsets.all(4),
+
+        child: pw.Text(
+
+          label,
+
+          style: pw.TextStyle(
+            fontWeight:
+                pw.FontWeight.bold,
+          ),
+        ),
+      ),
+
+      pw.Padding(
+
+        padding:
+            const pw.EdgeInsets.all(4),
+
+        child: pw.Align(
+
+          alignment:
+              pw.Alignment.centerRight,
+
+          child: pw.Text(
+
+            "Rs. ${value.toStringAsFixed(0)}",
+
+            style: pw.TextStyle(
+              fontWeight:
+                  pw.FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+
+
+// =========================
+// BANK ROW
+// =========================
+
+pw.Widget bankRow(
+    String label,
+    String value) {
+
+  return pw.Padding(
+
+    padding:
+        const pw.EdgeInsets.only(
+      bottom: 3,
+    ),
+
+    child: pw.Row(
+
+      children: [
+
+        pw.SizedBox(
+
+          width: 100,
+
+          child: pw.Text(
+
+            label,
+
+            style: pw.TextStyle(
+              fontWeight:
+                  pw.FontWeight.bold,
+              fontSize: 8,
+            ),
+          ),
+        ),
+
+        pw.Text(
+          ": ",
+          style: const pw.TextStyle(
+            fontSize: 8,
+          ),
+        ),
+
+        pw.Text(
+
+          value,
+
+          style: const pw.TextStyle(
+            fontSize: 8,
+            color: PdfColors.blue,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+
+
+Future<String> uploadPdf(
+    String filePath,
+    int custId) async {
+
+  try {
+
+    final data = await apiService.uploadPdf( filePath,
+      "$custId.pdf",
+    );
+
+    return data!;
+
+  } catch (e) {
+
+    print(
+      "UPLOAD ERROR : $e",
+    );
+
+    throw Exception(
+      "PDF Upload Failed",
+    );
+  }
+}
+
+
+Future<void> sendWhatsApp(
+    String pdfUrl) async {
+
+
+ String mobileNo = phoneController.text.trim();
+  String name = nameController.text.trim();
+  // agar user 10 digit dale
+  if (mobileNo.length == 10) {
+    mobileNo = "91$mobileNo";
+  }
+  
+
+  var url = Uri.parse(
+    "https://wa.dakshconnect.com/api/ac1f17b7-d64d-4815-a493-5d31cf50b799/contact/send-template-message",
+  );
+  var body = {
+    "from_phone_number_id":
+        "844506238736342",
+    // "phone_number":
+    //     "918949682733",
+    "phone_number": mobileNo,
+    "template_name":
+        "purchase_performa",
+    "template_language":
+        "en_US",
+    "templateArgs": {
+      "header_document":
+          pdfUrl,
+      "header_document_name":
+          "Quotation",
+      // "field_1":
+      //     "Mr./Mrs. Harish Saini",
+       "field_1": "Mr./Mrs. $name",
+      "field_2":
+          "most desired car",
+      "field_3":
+          "Abhishek Manjhi - 9926809870"
+    },
+    "contact": {
+      "first_name":
+          "Harish",
+      "last_name":
+          "Saini"
+    }
+  };
+
+  var response = await http.post(
+    url,
+    headers: {
+
+      "Content-Type":
+          "application/json",
+
+      "Authorization":
+          "Bearer tUxEaKK7CtNazzPclhCWVMYpyi8extH7TxDE2h1ikvyEjTbVlTUKLODIj1JA6OL5"
+    },
+
+    body: jsonEncode(body),
+  );
+  print(response.statusCode);
+  print(response.body);
+}
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -473,20 +1500,42 @@ Future<void> loadUserData() async {
           child: Container(
             constraints: const BoxConstraints(maxWidth: 900),
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFEBD8),
-              borderRadius: BorderRadius.circular(12),
-            ),
+
+            // decoration: BoxDecoration(
+            //   color: const Color(0xFFEFEBD8),
+            //   borderRadius: BorderRadius.circular(12),
+            // ),
+              decoration: BoxDecoration(
+                color: showroomType  == "Arena"
+                    ? const Color(0xFFEFEBD8)
+                    : showroomType  == "Nexa"
+                        ?const Color.fromARGB(255,10,22,40)
+                        : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
             child: Form(
               key: _formKey,
               child: Column(
                 children: [
+                  
 
-                  Image.asset("assets/images/logo.png", height: 70),
+
+                  // Image.asset("assets/images/logo.png", height: 70),
+
+                 showroomType == 'Nexa'
+                  ? Image.asset(
+                      "assets/images/newnexalogo.png",
+                      height: 70,
+                    )
+                  : Image.asset(
+                      "assets/images/logo.png",
+                      height: 70,
+                    ),
+
                   const SizedBox(height: 10),
 
                   const Text(
-                    "Customer Quotation",
+                    "Customer Quotations",
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
 
@@ -888,7 +1937,6 @@ Future<void> loadUserData() async {
                       setState(() {
                         exchange = v;
                         isExchangeEnabled = v == "Yes";
-
                         if (!isExchangeEnabled) {
                           txtExchangAmtController.clear();
                         }
@@ -904,22 +1952,19 @@ Future<void> loadUserData() async {
                       setState(() {
                         addDiscount = v;
                         isDiscountEnabled = v == "Yes";
-
                         if (!isDiscountEnabled) {
                           txtAddDisController.clear();
                         }
                       });
                     }),
-                    const SizedBox(height: 20),
 
+                    const SizedBox(height: 20),
                       textField(
                         "Discount Amt",
                         txtAddDisController,
                          enabled: isDiscountEnabled,
                       ),
 
-
-                  
 
                   // FINANCE SECTION
                    const SizedBox(height: 20),
@@ -977,14 +2022,265 @@ Future<void> loadUserData() async {
                   Row(
                   mainAxisAlignment: MainAxisAlignment.end, 
                   children: [
-                    ElevatedButton(
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          saveData();
+
+
+
+                      ElevatedButton(
+                    onPressed: () async {
+
+                    try {
+
+                      if (_formKey.currentState!
+                          .validate()) {
+
+                        // SAVE DATA
+                        int? custId =
+                            await saveData();
+
+                        if (custId == null) {
+                          return;
                         }
-                      },
-                      child: const Text("Submit"),
-                    ),
+
+                        final prefs =
+                            await SharedPreferences
+                                .getInstance();
+
+                        String locCode =
+                            prefs.getString(
+                                  "locationCode",
+                                ) ??
+                                "";
+
+                        final locationData =
+                            await apiService
+                                .getLocationByDmsCode(
+                          locCode,
+                        );
+
+                        // CREATE DATA OBJECT
+                        final data = QuoteData(
+
+                          showroomType:
+                              showroomType ?? 'Arena',
+
+                          customerName:
+                              nameController.text.trim(),
+
+                          contactNo:
+                              phoneController.text.trim(),
+
+                          email:
+                              emailController.text.trim(),
+
+                          city:
+                              cityController.text.trim(),
+
+                          professionType:
+                              profession ?? '',
+
+                          corporateName:
+                              corporate ?? '',
+
+                          departmentName:
+                              department ?? '',
+
+                          rmName: userName,
+                          rmPhone: userId,
+
+                          srmName: '',
+                          srmPhone: '',
+
+                          quotationDate: DateTime.now().toString(),
+
+                          modelWithFuel:
+                              model ?? '',
+
+                          variant:
+                              selectedVariant ?? '',
+
+                          color:
+                              color ?? '',
+
+                          customerFinancierType:
+                              'Individual / ${financier ?? "Cash"}',
+
+                          exShowroom:
+                              double.tryParse(
+                                    exShowroomController.text,
+                                  ) ??
+                                  0,
+
+                          insurance:
+                              double.tryParse(
+                                    txtInsAmtController.text,
+                                  ) ??
+                                  0,
+
+                          ewCcpAmount:
+                              double.tryParse(
+                                    txtEWAmountController.text,
+                                  ) ??
+                                  0,
+
+                          mgaOrGna:
+                              double.tryParse(
+                                    txtMGAAmtController.text,
+                                  ) ??
+                                  0,
+
+                          rtoAmount:
+                              double.tryParse(
+                                    txtRTOAmtController.text,
+                                  ) ??
+                                  0,
+
+                          fasTag:
+                              fastag == 'Yes'
+                                  ? 600
+                                  : 0,
+
+                          mcdParking:
+                              parkingCharge == 'Yes'
+                                  ? 2500
+                                  : 0,
+
+                          corporateOffer:
+                              double.tryParse(
+                                    txtCorporateOfferController.text,
+                                  ) ??
+                                  0,
+
+                          consumerOffer:
+                              double.tryParse(
+                                    txtConsumerOfferController.text,
+                                  ) ??
+                                  0,
+
+                          exchangeOffer:
+                              double.tryParse(
+                                    txtExchangAmtController.text,
+                                  ) ??
+                                  0,
+
+                          addnlDiscount:
+                              double.tryParse(
+                                    txtAddDisController.text,
+                                  ) ??
+                                  0,
+
+                          financeOn:
+                              financier == 'Finance'
+                                  ? (bank ?? 'Finance')
+                                  : 'Cash',
+
+                          loanAmount:
+                              double.tryParse(
+                                    loanAmountController.text,
+                                  ) ??
+                                  0,
+
+                          roi:
+                              double.tryParse(
+                                    interestController.text,
+                                  ) ??
+                                  0,
+
+                          tenureYears:
+                              int.tryParse(
+                                    tenureController.text,
+                                  ) ??
+                                  0,
+
+                          emiAmount:
+                              double.tryParse(
+                                    emiController.text,
+                                  ) ??
+                                  0,
+
+                          locationAddress:
+                              locationData['add1'] ?? '',
+
+                          locationCity:
+                              locationData['locCity'] ?? '',
+
+                          locationPincode:
+                              locationData['pincode'] ?? '',
+
+                          contactPhone:
+                              locationData['contactNo'] ?? '',
+
+                          locationEmail:
+                              locationData['locEmail'] ?? '',
+
+                          accountNumber:
+                              locationData['accountNo'] ?? '',
+
+                          bankName:
+                              locationData['bankname'] ?? '',
+
+                          beneficiary:
+                              locationData['beneficiary'] ?? '',
+
+                          ifscCode:
+                              locationData['ifscCode'] ?? '',
+
+                          branchName:
+                              locationData['branchAddress'] ?? '',
+
+                          hpnCharges: 0,
+                          tcsPct: 0,
+                        );
+
+                        // GENERATE PDF
+                        String pdfPath =await generatePdfSave(
+                          data,
+                          custId,
+                        );
+                         print(pdfPath);
+
+
+                          String pdfUrl =
+                          await uploadPdf(
+                            pdfPath,
+                            custId,
+                          );
+           
+                       //String pdfUrl = "http://103.203.224.110/salesapi/uploads/PdfImage/3118.pdf";
+                        // SEND WHATSAPP
+                        await sendWhatsApp(
+                          pdfUrl,
+                        );
+
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              "WhatsApp Sent Successfully",
+                            ),
+                          ),
+                        );
+                      }
+
+                    } catch (e) {
+
+                      print(e);
+
+                      ScaffoldMessenger.of(context)
+                          .showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            "Error : $e",
+                          ),
+                        ),
+                      );
+                    }
+                  },
+
+                  child: const Text("Submit"),
+                ),
+
+
+
 
                     const SizedBox(width: 10), // spacing
                     ElevatedButton(
@@ -997,68 +2293,84 @@ Future<void> loadUserData() async {
                       //      generatePdf();
                       //   }
                       // },
-                      onPressed: () async {
-  if (_formKey.currentState!.validate()) {
-    final isNexa = showroomType == 'Nexa';
-    final data = QuoteData(
-      customerName: nameController.text.trim(),
-      contactNo: phoneController.text.trim(),
-      email: emailController.text.trim(),
-      city: cityController.text.trim(),
-      professionType: profession ?? '',
-      corporateName: corporate ?? '',
-      departmentName: department ?? '',
-      rmName: userName,
-      rmPhone: userId,
-      srmName: '',
-      srmPhone: '',
-      quotationDate: DateTime.now().toString(),
-      modelWithFuel: model ?? '',
-      variant: selectedVariant ?? '',
-      // variantCode: selectedVariantCode ?? '',
-      color: color ?? '',
-      customerFinancierType: 'Individual / ${financier ?? "Cash"}',
-      exShowroom: double.tryParse(exShowroomController.text) ?? 0,
-      insurance: double.tryParse(txtInsAmtController.text) ?? 0,
-      ewCcpAmount: double.tryParse(txtEWAmountController.text) ?? 0,
-      mgaOrGna: double.tryParse(txtMGAAmtController.text) ?? 0,
-      rtoAmount: double.tryParse(txtRTOAmtController.text) ?? 0,
-      fasTag: fastag == 'Yes' ? 600 : 0,
-      mcdParking: parkingCharge == 'Yes' ? 2500 : 0,
-      corporateOffer: double.tryParse(txtCorporateOfferController.text) ?? 0,
-      consumerOffer: double.tryParse(txtConsumerOfferController.text) ?? 0,
-      exchangeOffer: double.tryParse(txtExchangAmtController.text) ?? 0,
-      addnlDiscount: double.tryParse(txtAddDisController.text) ?? 0,
-      financeOn: financier == 'Finance' ? (bank ?? 'Finance') : 'Cash',
-      loanAmount: double.tryParse(loanAmountController.text) ?? 0,
-      roi: double.tryParse(interestController.text) ?? 0,
-      tenureYears: int.tryParse(tenureController.text) ?? 0,
-      emiAmount: double.tryParse(emiController.text) ?? 0,
-      showroomType: showroomType ?? 'Arena',
-      locationAddress: isNexa
-          ? 'Survey No. 54/207 Gopalpura Flyover Near Manav Ashram, Tonk Road, Gopal Pura'
-          : 'Ajmer Pulia, GopalbariJaipur-302006',
-      locationCity: 'Jaipur',
-      locationPincode: isNexa ? '302018' : '302006',
-      contactPhone: isNexa ? '8929782575' : '8929268096',
-      locationEmail: isNexa
-          ? 'nexajpr.tdm@premmotors.com'
-          : 'cp.sales@premmotors.com',
-      accountNumber: isNexa ? '50200029573580' : '50200029378770',
+                  onPressed: () async {
+                    if (_formKey.currentState!.validate()) {
 
 
-      bankName: 'HDFC BANK LTD.',       // ✅ FIXED
-  beneficiary: 'M/S PREM MOTORS',   // ✅ FIXED
-  // accountNumber: '1234567890',
-  ifscCode: 'HDFC0001585',          // ✅ FIXED
-  branchName: 'JAIPUR',
+                    final prefs = await SharedPreferences.getInstance();
 
-  hpnCharges: 0,   // ✅ FIXED
-  tcsPct: 0, 
-    );
-    await generatePdf(data);
-  }
-},
+                    String locCode =prefs.getString("locationCode") ?? "";
+
+                    final locationData =await apiService.getLocationByDmsCode(locCode);
+
+                    final isNexa = showroomType == 'Nexa';
+                    
+                    final data = QuoteData(
+                        
+                        customerName: nameController.text.trim(),
+                        contactNo: phoneController.text.trim(),
+                        email: emailController.text.trim(),
+                        city: cityController.text.trim(),
+                        professionType: profession ?? '',
+                        corporateName: corporate ?? '',
+                        departmentName: department ?? '',
+                        rmName: userName,
+                        rmPhone: userId,
+                        srmName: '',
+                        srmPhone: '',
+                        quotationDate: DateTime.now().toString(),
+                        modelWithFuel: model ?? '',
+                        variant: selectedVariant ?? '',
+                        // variantCode: selectedVariantCode ?? '',
+                        color: color ?? '',
+                        customerFinancierType: 'Individual / ${financier ?? "Cash"}',
+                        exShowroom: double.tryParse(exShowroomController.text) ?? 0,
+                        insurance: double.tryParse(txtInsAmtController.text) ?? 0,
+                        ewCcpAmount: double.tryParse(txtEWAmountController.text) ?? 0,
+                        mgaOrGna: double.tryParse(txtMGAAmtController.text) ?? 0,
+                        rtoAmount: double.tryParse(txtRTOAmtController.text) ?? 0,
+                        fasTag: fastag == 'Yes' ? 600 : 0,
+                        mcdParking: parkingCharge == 'Yes' ? 2500 : 0,
+                        corporateOffer: double.tryParse(txtCorporateOfferController.text) ?? 0,
+                        consumerOffer: double.tryParse(txtConsumerOfferController.text) ?? 0,
+                        exchangeOffer: double.tryParse(txtExchangAmtController.text) ?? 0,
+                        addnlDiscount: double.tryParse(txtAddDisController.text) ?? 0,
+                        financeOn: financier == 'Finance' ? (bank ?? 'Finance') : 'Cash',
+                        loanAmount: double.tryParse(loanAmountController.text) ?? 0,
+                        roi: double.tryParse(interestController.text) ?? 0,
+                        tenureYears: int.tryParse(tenureController.text) ?? 0,
+                        emiAmount: double.tryParse(emiController.text) ?? 0,
+                        showroomType: showroomType ?? 'Arena',
+
+                        // locationAddress: isNexa ? 'Survey No. 54/207 Gopalpura Flyover Near Manav Ashram, Tonk Road, Gopal Pura': 'Ajmer Pulia, GopalbariJaipur-302006',
+                        locationAddress: locationData['add1'] ?? '',
+                        // locationCity: 'Jaipur',
+                        locationCity: locationData['locCity'] ?? '',
+                        // locationPincode: isNexa ? '302018' : '302006',
+                        locationPincode: locationData['pincode'] ?? '',
+                        // contactPhone: isNexa ? '8929782575' : '8929268096',
+                        contactPhone:locationData['contactNo'] ?? '',
+
+                        // locationEmail: isNexa ? 'nexajpr.tdm@premmotors.com' : 'cp.sales@premmotors.com',
+                        locationEmail: locationData['locEmail'] ?? '',
+                        
+                        // bankName: 'HDFC BANK LTD.',  
+                        accountNumber: locationData['accountNo'] ?? '',
+                        // accountNumber: isNexa ? '50200029573580' : '50200029378770',
+                        bankName:locationData['bankname'] ?? '',     
+                        // beneficiary: 'M/S PREM MOTORS',  
+                        beneficiary:locationData['beneficiary'] ?? '',
+                        // accountNumber: '1234567890',
+                        // ifscCode: 'HDFC0001585',
+                        ifscCode:locationData['ifscCode'] ?? '',        
+                        //branchName: 'JAIPUR',
+                        branchName: locationData['branchAddress'] ?? '',
+                        hpnCharges: 0,   // ✅ FIXED
+                        tcsPct: 0, 
+                          );
+                      await generatePdf(data);
+                    }
+                  },
 
                       // child: const Text("Preview",$showroomType ),
                       child: Text("Preview $showroomType"),

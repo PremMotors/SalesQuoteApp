@@ -1,4 +1,4 @@
-package com.example.sales_quote_arnexa
+package com.anilyadav.salesquote
 
 import io.flutter.embedding.android.FlutterActivity
 

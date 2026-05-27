@@ -6,7 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AuthService {
   // 🔥 Use this for real device. For emulator keep 10.0.2.2
   // static const String baseUrl = "http://10.0.2.2:5247";
-  static const String baseUrl = "http://localhost:5247";
+  // static const String baseUrl = "http://localhost:5247";
+  //  static const String baseUrl = "http://103.203.224.110";
+   static const String baseUrl = "http://103.203.224.110/salesapi";
 
 
 // ── Stored session ─────────────────────────────────────────
@@ -20,56 +22,45 @@ class AuthService {
   static String? _Loc_Code;
 
   
- Future<Map<String, dynamic>?> login(
-      String UserName, String Pass, String showroomType) async {
+  Future<Map<String, dynamic>?> login(
+  String userId,
+  String Pass,
+  String showroomType,
+) async {
 
-    print("API CALL → $baseUrl/api/auth/login");
+  final response = await http.post(
+    Uri.parse("$baseUrl/api/auth/login"),
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: jsonEncode({
+      "userId": userId,
+      "Pass": Pass,
+      "showroomType": showroomType,
+    }),
+  );
 
-    try {
-      final res = await http.post(
-        Uri.parse('$baseUrl/api/auth/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'UserName': UserName,
-          'Pass': Pass,
-          'showroomType': showroomType,
-        }),
-      );
+  print("STATUS CODE => ${response.statusCode}");
+  print("BODY => ${response.body}");
 
-      print("STATUS CODE → ${res.statusCode}");
-      print("RESPONSE → ${res.body}");
-
-      if (res.statusCode != 200) {
-        return {
-          "success": false,
-          "message": res.body
-        };
-      }
-
-      final data = jsonDecode(res.body);
-
-      if (data['success'] == true) {
-        _token = data['data']['token'];
-        _userId = data['data']['userId'];
-        _showroomType = data['data']['showroomType'];
-        _fullName = data['data']['fullName'];
-        _role = data['data']['role'];
-        _username = data['data']['username'];
-        _pass = data['data']['password'];
-        _Loc_Code = data['data']['Loc_Code'];
-      }
-
-      return data;
-
-    } catch (e) {
-      print("API ERROR → $e");
-      return {
-        "success": false,
-        "message": "Cannot connect to server"
-      };
-    }
+  if (response.statusCode == 200) {
+    return jsonDecode(response.body);
   }
-  
+
+  else if (response.statusCode == 401) {
+    throw Exception("401");
+  }
+
+  else if (response.statusCode == 500) {
+    throw Exception("500");
+  }
+
+  else {
+    throw Exception("Login Failed");
+  }
+}
+
+
    // 🔹 GET Departments
 Future<List<String>> getDepartments(String model) async {
   final response = await http.get(
@@ -115,6 +106,8 @@ Future<List<String>> GetCorporateByScheme(String scheme) async {
     throw Exception("Failed to load departments");
   }
 }
+
+
 
 Future<double> getTotalOffer(String model, String corporateName) async {
   final url =
@@ -164,8 +157,7 @@ Future<double> getAccessoriesAmount(String modelWithType, String location) async
     throw Exception("Invalid params: model or location empty");
   }
 
-  final url =
-      "$baseUrl/api/pricelist/accessories?modelWithType=${Uri.encodeComponent(modelWithType)}&location=${Uri.encodeComponent(location)}";
+  final url = "$baseUrl/api/pricelist/accessories?modelWithType=${Uri.encodeComponent(modelWithType)}&location=${Uri.encodeComponent(location)}";
 
   print("URL: $url");
 
@@ -239,26 +231,196 @@ Future<List<String>> getFinancerNames() async {
   }
 }
 
-  Future<bool> submitData(Map<String, dynamic> body) async {
-    final url = Uri.parse("$baseUrl/api/pricelist/save");
 
-    try {
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(body),
-      );
+Future<Map<String, dynamic>>
+    getLocationByDmsCode(
+        String locCode) async {
 
-      print("Status: ${response.statusCode}");
-      print("Response: ${response.body}");
+  final response = await http.get(
 
-      return response.statusCode == 200 || response.statusCode == 201;
-    } catch (e) {
-      print("ERROR: $e");
-      return false;
+    Uri.parse(
+      "$baseUrl/api/PriceList/GetLocationByDmsCode/$locCode",
+    ),
+
+  );
+
+  print(response.body);
+
+  if (response.statusCode == 200) {
+
+    final List<dynamic> data =
+        jsonDecode(response.body);
+
+    if (data.isNotEmpty) {
+
+      return data[0];
+
+    } else {
+
+      throw Exception(
+          "No Location Data Found");
     }
+
+  } else {
+
+    throw Exception(
+        "API Failed");
   }
+}
+
+
+Future<Map<String, dynamic>?> submitData(
+    Map<String, dynamic> body) async {
+
+  final url =
+      Uri.parse("$baseUrl/api/pricelist/save");
+
+  try {
+
+    final response = await http.post(
+      url,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode(body),
+    );
+
+    print("Status: ${response.statusCode}");
+    print("Response: ${response.body}");
+
+    if (response.statusCode == 200 ||
+        response.statusCode == 201) {
+
+      return jsonDecode(response.body)
+          as Map<String, dynamic>;
+    }
+
+    return null;
+
+  } catch (e) {
+
+    print("ERROR: $e");
+
+    return null;
+  }
+}
+  // Future<bool> submitData(Map<String, dynamic> body) async {
+  //   final url = Uri.parse("$baseUrl/api/pricelist/save");
+    
+  //   try {
+  //     final response = await http.post(
+  //       url,
+  //       headers: {"Content-Type": "application/json"},
+  //       body: jsonEncode(body),
+  //     );
+
+  //     print("Status: ${response.statusCode}");
+  //     print("Response: ${response.body}");
+
+  //     return response.statusCode == 200 || response.statusCode == 201;
+  //   } catch (e) {
+  //     print("ERROR: $e");
+  //     return false;
+  //   }
+  // }
   
+Future<String?> uploadPdf(
+    String filePath,
+    String fileName) async {
+
+  try {
+
+    var request =
+        http.MultipartRequest(
+      "POST",
+      Uri.parse(
+        "$baseUrl/api/WhatsApp/upload",
+      ),
+    );
+
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'file',
+        filePath,
+        filename: fileName,
+      ),
+    );
+
+    var response = await request.send();
+
+    var responseData = await response.stream.bytesToString();
+
+    print(
+      "STATUS CODE : ${response.statusCode}",
+    );
+
+    print(
+      "RESPONSE : $responseData",
+    );
+
+    // SUCCESS
+    if (response.statusCode == 200) {
+
+      if (responseData.isNotEmpty) {
+
+        final json =
+            jsonDecode(responseData);
+
+        return json["url"];
+      }
+    }
+
+    return null;
+
+  } catch (e) {
+
+    print("UPLOAD API ERROR : $e");
+
+    return null;
+  }
+}
+
+
+
+
+// Future<String> uploadPdf(String filePath) async {
+
+//   var request = http.MultipartRequest(
+
+//   'POST',
+
+//   Uri.parse(
+//     "$baseUrl/api/WhatsApp/upload",
+//   ),
+// );
+
+//   request.files.add(
+
+//     await http.MultipartFile.fromPath(
+//       'file',
+//       filePath,
+//     ),
+//   );
+
+//   var response = await request.send();
+
+//   if (response.statusCode == 200) {
+
+//     var responseData =
+//         await response.stream.bytesToString();
+
+//     var jsonData =
+//         jsonDecode(responseData);
+
+//     return jsonData['url'];
+//   }
+
+//   throw Exception(
+//       "PDF Upload Failed");
+// }
+
+
+
 Future<double> getWarrantyAmount(
   String model,
   String ewType,

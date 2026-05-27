@@ -13,7 +13,7 @@ class AppColors {
   // Nexa - Elegant Charcoal + Red
   static const nexaCharcoal = Color(0xFF1A1A2E);
   static const nexaDark = Color(0xFF16213E);
-  static const nexaRed = Color(0xFFE63946);
+  static const nexaRed = Color.fromARGB(255, 252, 244, 245);
   static const nexaAccent = Color(0xFFFF6B6B);
   static const nexaSilver = Color(0xFFCDD3DA);
   static const nexaLight = Color(0xFFF8F9FA);
