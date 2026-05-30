@@ -1,0 +1,655 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sales_quote_arnexa/screens/login_screen.dart';
+import 'package:sales_quote_arnexa/services/auth_service.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:sales_quote_arnexa/models/price_model.dart';
+
+
+
+class CustomerQuoteScreen extends StatefulWidget {
+  
+  final String userName;
+  const CustomerQuoteScreen({super.key, required this.userName});
+  @override
+  State<CustomerQuoteScreen> createState() => _CustomerQuoteScreenState();
+}
+
+class _CustomerQuoteScreenState extends State<CustomerQuoteScreen> {
+
+  /// FORM KEY
+  final _formKey = GlobalKey<FormState>();
+   String userName = "";
+   int userId = 0;
+  //  final String modelGroup;
+  /// 🔹 BASIC CONTROLLERS
+  final nameController = TextEditingController();
+  final phoneController = TextEditingController();
+  final emailController = TextEditingController();
+  final cityController = TextEditingController();
+
+  /// 🔹 PRICE CONTROLLERS
+  final exShowroomController = TextEditingController();
+  final txtCorporateOfferController = TextEditingController();
+  final txtInsAmtController = TextEditingController();
+  final txtMGAAmtController = TextEditingController();
+  final txtRTOAmtController = TextEditingController();
+  final txtEWAmountController = TextEditingController();
+  final txtConsumerOfferController = TextEditingController();
+  final txtExchangAmtController = TextEditingController();
+  final txtAddDisController = TextEditingController();
+
+  /// 🔹 FINANCE CONTROLLERS
+  final tenureController = TextEditingController();
+  final interestController = TextEditingController();
+  final loanAmountController = TextEditingController();
+  final emiController = TextEditingController();
+
+  /// 🔹 DROPDOWN VARIABLES
+  String? customerType, model;
+  String? color, profession, corporate, department, parking;
+  String? fastag, insurance, accessories, rto, warranty;
+  String? consumerOffer, exchange, addDiscount;
+  String? financier, bank, financeOn, percent;
+
+  bool isFinance = false;
+
+  /// 🔹 LISTS
+  
+  /// LISTS
+  
+  List<PriceModel> allData = [];
+  List<String> modelList = [];
+  List<String> variantList = [];
+  List<String> variantCodeList = [];
+  List<String> colorList = [];
+  String? selectedVariant;
+  String? selectedVariantCode;
+  String? selectedModel;
+  List<String> departmentList = []; 
+  bool isLoading = false;
+  bool isCorporateEnabled = false;
+  bool isInsuranceEnabled = false;
+  bool isAccessoriesEnabled = false;
+  bool isRTOEnabled = false;
+  bool isWarrantyEnabled = false;
+  bool isConsumerOfferEnabled = false;
+  bool isExchangeEnabled = false;
+  bool isDiscountEnabled = false;
+List<String> corporateList = [];
+double totalOffer = 0;
+  final totalOfferController = TextEditingController();
+
+  /// ================= API LOAD =================
+final AuthService apiService = AuthService();
+void loadData() async {
+  allData = await apiService.getAllData();
+
+  modelList = allData
+      .map((e) => e.modelGroup)
+      .toSet()
+      .toList();
+
+  setState(() {});
+}
+Future<void> onModelChanged(String? v) async {
+  if (v == null) return;
+  setState(() {
+    model = v;
+    variantList = allData
+        .where((e) => e.modelGroup == v)
+        .map((e) => e.description)
+        .toSet()
+        .toList();
+
+    selectedVariant = null;
+    selectedVariantCode = null;
+    departmentList = [];   // 🔥 clear old data
+    department = null;
+    corporateList = [];   // 🔥 clear old data
+    corporate = null;
+  });
+   
+  // 🔥 CALL API AFTER STATE UPDATE
+  await fetchCorporate(v);
+}
+
+void onVariantChanged(String? v) {
+  selectedVariant = v;
+
+  // 🔹 Filter variant codes
+  var filtered = allData
+      .where((e) =>
+          e.modelGroup == model &&
+          e.description == v)
+      .toList();
+
+  variantCodeList = filtered
+      .map((e) => e.modelWithType)
+      .toSet()
+      .toList();
+
+  // 🔥 AUTO FILL Ex Showroom (take first item)
+  if (filtered.isNotEmpty) {
+    exShowroomController.text =
+        filtered.first.exShowroom.toString();
+  }
+
+  selectedVariantCode = null;
+  colorList = [];
+
+  setState(() {});
+}
+
+void onVariantCodeChanged(String? v) async {
+  if (v == null) return;
+
+  selectedVariantCode = v;
+
+  // 🔥 Load colors from API
+  colorList = await apiService.getColors(v);
+
+  colorList.insert(0, "Select Colour");
+  color = "Select Colour";
+
+  setState(() {});
+}
+
+
+
+
+Future<void> fetchCorporate(String model) async {
+  try {
+    final data = await apiService.getDepartments(model);
+
+    print("DEPARTMENT DATA: $data");
+
+    setState(() {
+      corporateList = data.toSet().toList(); // ✅ सही list
+      corporate = null;                      // reset selection
+    });
+  } catch (e) {
+    print("Error: $e");
+  }
+}
+
+
+Future<void> fetchDepartments(String corporate) async {
+  try {
+    final data = await apiService.GetCorporateByScheme(corporate);
+
+    print("DEPARTMENT DATA: $data");
+
+    setState(() {
+      departmentList = data.toSet().toList(); // remove duplicates
+      department = null; // reset selection
+    });
+  } catch (e) {
+    print("Error: $e");
+  }
+}
+
+
+
+// Future<void> getDepartments(String schemeGroup) async {
+//   final data = await apiService.GetCorporateByScheme(schemeGroup);
+
+
+//   setState(() {
+//     departmentList = data.toSet().toList(); // remove duplicates
+//     department = null; // reset
+//   });
+// }
+
+Future<void> saveData() async {
+  if (!_formKey.currentState!.validate()) return;
+  final body = {
+    "CustName": nameController.text.trim(),
+    "PhoneNo": phoneController.text.trim(),
+    "Email": emailController.text.trim(),
+    "City": cityController.text.trim(),
+    "CustType": customerType,
+    "Model": model,
+    "Variant": selectedVariant,
+    "Model_with_Type": selectedVariantCode,
+    "Colour": color,
+    "Profession": profession,
+    "ExShowroomPrice":
+        double.tryParse(exShowroomController.text) ?? 0,
+    "CorporateName": corporate,
+    "DeptName": department,
+    "MCDParkingCharges": parking == "Yes" ? 1 : 0,
+    "CorporateOffer":
+        double.tryParse(txtCorporateOfferController.text) ?? 0,
+    "InsurancePer": 0,
+    "FastTag": fastag == "Yes" ? 1 : 0,
+    "InsuranceAmt":
+        double.tryParse(txtInsAmtController.text) ?? 0,
+    "AccessoriesPer": 0,
+    "AccessoriesAmt":
+        double.tryParse(txtMGAAmtController.text) ?? 0,
+    "RTOPer": 0,
+    "RTOAmt":
+        double.tryParse(txtRTOAmtController.text) ?? 0,
+    "WarrantyPer": 0,
+    "WarrantyAmt":
+        double.tryParse(txtEWAmountController.text) ?? 0,
+    "ConsumerOffer": 0,
+    "ConsumerOfferAmt":
+        double.tryParse(txtConsumerOfferController.text) ?? 0,
+     "ExchangePer": 0,
+    "ExchangeAmt":
+        double.tryParse(txtExchangAmtController.text) ?? 0,
+    "AdditionalDisAmt":
+        double.tryParse(txtAddDisController.text) ?? 0,
+    "FinanceBank": bank,
+    "Tenure": int.tryParse(tenureController.text) ?? 0,
+    "InterestType": interestController.text,
+    "LoanPer": double.tryParse(
+            percent?.replaceAll("%", "") ?? "0") ??
+        0,
+    "Loanamount":
+        double.tryParse(loanAmountController.text) ?? 0,
+    "EMI": double.tryParse(emiController.text) ?? 0,
+    "IsActive": true
+  };
+
+  final success = await apiService.submitData(body);
+  if (success) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("✅ Data Saved Successfully")),
+    );
+
+    void clearForm() {
+    // 🔹 Text fields
+    nameController.clear();
+    phoneController.clear();
+    emailController.clear();
+    cityController.clear();
+
+    exShowroomController.clear();
+    txtCorporateOfferController.clear();
+    txtInsAmtController.clear();
+    txtMGAAmtController.clear();
+    txtRTOAmtController.clear();
+    txtEWAmountController.clear();
+    txtConsumerOfferController.clear();
+    txtExchangAmtController.clear();
+    txtAddDisController.clear();
+
+    tenureController.clear();
+    interestController.clear();
+    loanAmountController.clear();
+    emiController.clear();
+
+  // 🔹 Dropdowns reset
+  setState(() {
+    customerType = null;
+    model = "Select Model With Fuel";
+    selectedVariant = "Select Variant Name";
+    selectedVariantCode = "Select Variant Code";
+    color = null;
+    profession = null;
+    corporate = null;
+    department = null;
+    parking = null;
+    fastag = null;
+    insurance = null;
+    accessories = null;
+    rto = null;
+    warranty = null;
+    consumerOffer = null;
+    exchange = null;
+    addDiscount = null;
+    financier = null;
+    bank = null;
+    financeOn = null;
+    percent = null;
+    isFinance = false;
+  });
+} // reset form
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("❌ Failed to save data")),
+    );
+  }
+}
+  Future<void> loadInitialData() async {
+  setState(() => isLoading = true);
+
+  if (model != null) {
+    await fetchCorporate(model!);
+  }
+
+  setState(() => isLoading = false);
+}
+@override
+void initState() {
+  super.initState();
+  loadData();
+  loadUserData();
+  loadInitialData(); // ✅ async handled correctly
+}
+
+
+  List<String> professionList = 
+  [
+    "Select Profession Type",
+    "Farmers", 
+    "HouseWife",
+    "NRI",
+    "Other",
+    "Proprietor/Trade",
+    "Retired",
+    "Salaried Govt.",
+    "Salaried Private",
+    "Student"
+  ];
+
+
+  /// 🔹 TEXTFIELD
+ Widget textField(
+  String label,
+  TextEditingController controller, {
+  bool enabled = true,
+  bool isPhone = false,
+  IconData? icon,
+  bool isEmail = false,
+}) {
+  return TextFormField(
+    controller: controller,
+    enabled: enabled,
+    autovalidateMode: AutovalidateMode.onUserInteraction,
+    keyboardType: isPhone ? TextInputType.number : TextInputType.text,
+    inputFormatters: isPhone
+        ? [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(10),
+          ]
+        : [],
+      decoration: InputDecoration(
+      labelText: label,
+
+      /// 🔥 THIS LINE ADDED
+      prefixIcon: icon != null ? Icon(icon) : null,
+      filled: true,
+      fillColor: enabled ? Colors.white : Colors.grey.shade300,
+      border: OutlineInputBorder(),
+    ),
+    validator: (value) {
+      if (value == null || value.isEmpty) {
+        return "$label required";
+      }
+      if (isPhone && value.length != 10) {
+        return "Phone must be 10 digits";
+      }
+      if (isEmail) {
+        final regex =
+            RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+        if (!regex.hasMatch(value)) {
+          return "Invalid email";
+        }
+      }
+      return null;
+    },
+  );
+}
+
+
+Future<void> loadUserData() async {
+  final prefs = await SharedPreferences.getInstance();
+
+  setState(() {
+    userName = prefs.getString("UserName") ?? "";
+    userId = prefs.getInt("userId") ?? 0;
+  });
+}
+
+  /// 🔹 DROPDOWN
+  Widget dropdown(String label, String? value, List<String> items,
+      Function(String?)? onChange) {
+    return DropdownButtonFormField<String>(
+      isExpanded: true,
+      // value: value,
+      value: items.contains(value) ? value : null,
+      hint: Text(label),
+      items: items
+          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+          .toList(),
+      onChanged: onChange,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(),
+      ),
+    );
+  }
+
+  /// 🔹 CLEAR FINANCE
+  void clearFinanceFields() {
+    bank = null;
+    financeOn = null;
+    percent = null;
+    tenureController.clear();
+    interestController.clear();
+    loanAmountController.clear();
+    emiController.clear();
+  }
+
+
+  /// ================= LOGOUT Start =================
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const LoginScreen(),
+      ),
+    );
+  }
+ /// ================= LOGOUT End =================
+ 
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+
+      /// APPBAR
+      appBar: AppBar(
+        backgroundColor: Colors.blue,
+        title: Text(
+        "Welcome ! $userName - $userId",
+        style: const TextStyle(color: Colors.white),
+      ),
+        actions: [
+          TextButton(
+            // onPressed: () {},
+            onPressed: logout,
+            child: const Text(
+              "Logout",
+              style: TextStyle(color: Colors.yellow),
+            ),
+          )
+        ],
+      ),
+
+      backgroundColor: const Color.fromARGB(213, 13, 13, 13),
+
+      /// BODY
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 900),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFEBD8),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                children: [
+
+                  Image.asset("assets/images/logo.png", height: 70),
+                  const SizedBox(height: 10),
+
+                  const Text(
+                    "Customer Quotation",
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+
+
+                          dropdown(
+                            "Select Customer Type",
+                            customerType,
+                            ["Select Customer Type", "Individual", "CSD"],
+                            (v) {
+                              setState(() {
+                                customerType = v;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 20),
+
+
+                          dropdown("Select Model", model, modelList, onModelChanged),
+                          const SizedBox(height: 20),
+
+
+                          dropdown(
+                            "Select Variant",
+                            selectedVariant,
+                            variantList,
+                            onVariantChanged,
+                          ),
+                          const SizedBox(height: 20),
+                          dropdown(
+                            "Variant Code",
+                            selectedVariantCode,
+                            variantCodeList,
+                            onVariantCodeChanged,
+                          ),
+                          const SizedBox(height: 20),
+                          dropdown(
+                            "Select Colour",
+                            color,
+                            colorList,
+                            (v) => setState(() => color = v),
+                          ),
+
+
+                      const SizedBox(height: 20),
+
+                      
+                      textField("Ex Showroom", exShowroomController),
+                      const SizedBox(height: 20),
+
+
+                      dropdown("Profession", profession, professionList,
+                          (v) => setState(() => profession = v)),
+                      const SizedBox(height: 20),
+                     
+
+                    dropdown(
+                      "Select Corporate",
+                      corporateList.contains(corporate) ? corporate : null,
+                      corporateList,
+                      (v) async {
+                        setState(() {
+                          corporate = v;
+                          departmentList = []; // clear old
+                          department = null;
+                        });
+
+                        if (v != null) {
+                          await fetchDepartments(v); // 🔥 CALL API
+                        }
+                      },
+                    ),
+
+                    const SizedBox(height: 20),
+                  dropdown(
+                    "Select Department",
+                    departmentList.contains(department) ? department : null,
+                    departmentList,
+                    (v) async {
+                      if (v == null) return;
+
+                      setState(() {
+                        department = v;
+                        totalOfferController.clear(); // reset
+                      });
+
+                      print("Selected Dept: $v, Model: $model");
+
+                      try {
+                        final offer = await apiService.getTotalOffer(model!, v);
+
+                        print("API OFFER: $offer"); // 🔍 check
+
+                        setState(() {
+                          totalOfferController.text = offer.toString();
+                        });
+                      } catch (e) {
+                        print("ERROR: $e");
+                      }
+                    },
+                  ),
+                      
+                  
+                    const SizedBox(height: 20),   
+                  TextField(
+                  controller: totalOfferController,
+                  readOnly: true,
+                  decoration: const InputDecoration(
+                    labelText: "Total Offer",
+                    prefixText: "₹ ",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+
+
+                  Row(
+                  mainAxisAlignment: MainAxisAlignment.end, 
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        if (_formKey.currentState!.validate()) {
+                          saveData();
+                        }
+                      },
+                      child: const Text("Submit"),
+                    ),
+
+                    const SizedBox(width: 10), // spacing
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      ),
+                      onPressed: () {
+                        if (_formKey.currentState!.validate()) {
+                          // generatePdf();
+                        }
+                      },
+                      child: const Text("Preview"),
+                    ),
+                  ],
+                )
+
+
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
