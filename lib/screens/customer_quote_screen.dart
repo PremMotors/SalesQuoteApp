@@ -13,6 +13,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'dart:math';
+
 
 class CustomerQuoteScreen extends StatefulWidget {
   final String userName;
@@ -35,6 +37,7 @@ class UpperCaseTextFormatter
       );
     }
 }
+
 class LowerCaseTextFormatter
     extends TextInputFormatter {
     @override
@@ -48,6 +51,7 @@ class LowerCaseTextFormatter
       );
     }
 }
+
 class _CustomerQuoteScreenState extends State<CustomerQuoteScreen> {
   /// FORM KEY
   final _formKey = GlobalKey<FormState>();
@@ -251,6 +255,7 @@ Future<int?> saveData() async {
   return null;
 }
 
+
   @override
   void initState()
   {
@@ -262,6 +267,8 @@ Future<int?> saveData() async {
     txtAddDisController.text = "0";
     txtExchangAmtController.text = "0";
     txtConsumerOfferController.text ="0";
+    loanAmountController.addListener(calculateEMI);
+    interestController.addListener(calculateEMI);
   }
   List<String> professionList =  [  "Select Profession Type", "Farmers","HouseWife", "NRI", "Other", "Proprietor/Trade", "Retired", "Salaried Govt.","Salaried Private", "Student" ];
   Widget textField(
@@ -313,7 +320,7 @@ Future<int?> saveData() async {
       }
 
       if (isPhone && value!.length != 10) {
-
+ 
         return "Phone must be 10 digits";
       }
 
@@ -355,24 +362,47 @@ Future<void> loadUserData() async {
 }
 
   /// 🔹 DROPDOWN
-  Widget dropdown(String label, String? value, List<String> items,
-      Function(String?)? onChange) {
-    return DropdownButtonFormField<String>(
-      isExpanded: true,
-      value: value,
-      hint: Text(label),
-      items: items
-          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-          .toList(),
-      onChanged: onChange,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(),
-      ),
-    );
-  }
-
+  // Widget dropdown(String label, String? value, List<String> items,
+  //     Function(String?)? onChange) {
+  //   return DropdownButtonFormField<String>(
+  //     isExpanded: true,
+  //     value: value,
+  //     hint: Text(label),
+  //     items: items
+  //         .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+  //         .toList(),
+  //     onChanged: onChange,
+  //     decoration: InputDecoration(
+  //       filled: true,
+  //       fillColor: Colors.white,
+  //       border: OutlineInputBorder(),
+  //     ),
+  //   );
+  // }
+Widget dropdown(
+  String label,
+  String? value,
+  List<String> items,
+  Function(String?)? onChange,
+) {
+  return DropdownButtonFormField<String>(
+    isExpanded: true,
+    value: value,
+    items: items
+        .map((e) => DropdownMenuItem(
+              value: e,
+              child: Text(e),
+            ))
+        .toList(),
+    onChanged: onChange,
+    decoration: InputDecoration(
+      labelText: label, // <-- yaha change
+      filled: true,
+      fillColor: Colors.white,
+      border: const OutlineInputBorder(),
+    ),
+  );
+}
   /// 🔹 CLEAR FINANCE
   void clearFinanceFields() {
     bank = null;
@@ -384,27 +414,54 @@ Future<void> loadUserData() async {
     emiController.clear();
   }
 
+void calculateEMI() {
+  double loanAmount =
+      double.tryParse(loanAmountController.text.replaceAll(',', '')) ?? 0;
+
+  // Dropdown se direct months mil rahe hain
+  int months = int.tryParse(tenureController.text) ?? 0;
+
+  double annualInterestRate =
+      double.tryParse(interestController.text) ?? 0;
+
+  if (loanAmount > 0 &&
+      months > 0 &&
+      annualInterestRate > 0) {
+
+    double monthlyRate = annualInterestRate / 12 / 100;
+
+    double emi = (loanAmount *
+            monthlyRate *
+            pow(1 + monthlyRate, months)) /
+        (pow(1 + monthlyRate, months) - 1);
+
+    setState(() {
+      emiController.text = emi.toStringAsFixed(0);
+    });
+  } else {
+    setState(() {
+      emiController.clear();
+    });
+  }
+}
+
+
 
 void calculateLoanAmount() {
-
 
   double exShowroom = double.tryParse( exShowroomController.text, ) ?? 0;
   double insurance = double.tryParse( txtInsAmtController.text, ) ?? 0;
   double accessories = double.tryParse( txtMGAAmtController.text, ) ?? 0;
   double rto = double.tryParse( txtRTOAmtController.text, ) ?? 0;
   double warranty = double.tryParse( txtEWAmountController.text,  ) ?? 0;
-
-
   double corporateOffer = double.tryParse( txtCorporateOfferController.text, ) ?? 0;
   double consumerOffer = double.tryParse( txtConsumerOfferController.text, ) ?? 0;
   double exchange = double.tryParse( exShowroomController.text, ) ??  0;
   double discount = double.tryParse( txtAddDisController.text, ) ?? 0;
-
   // ✅ ON ROAD
   // double onRoad = exShowroom + insurance + accessories + rto + warranty;
   double onRoad = corporateOffer + consumerOffer + exchange + discount;
   double loanAmount = 0;
-
   // ✅ FIRST TIME FULL PRICE
   if (percent == null || percent!.isEmpty) 
   {
@@ -414,7 +471,7 @@ void calculateLoanAmount() {
     }
     else if (financeOn == "OnRoad") 
     {
-      loanAmount = onRoad;
+      loanAmount = onRoad ;
     }
     else {
       loanAmount = onRoad;
@@ -428,10 +485,10 @@ void calculateLoanAmount() {
       loanAmount = exShowroom * loanPer / 100;
     }
     else if (financeOn == "OnRoad") {
-      loanAmount = onRoad ;
+      loanAmount = onRoad * loanPer / 100;
     }
     else {
-      loanAmount = onRoad ;
+      loanAmount = onRoad * loanPer / 100;
     }
   }
   loanAmountController.text = loanAmount.toStringAsFixed(0);
@@ -507,25 +564,47 @@ Future<String> generatePdfSave(
                       mainAxisAlignment:  pw.MainAxisAlignment .spaceBetween,
                       crossAxisAlignment:  pw.CrossAxisAlignment.start,
 
-                      children: [
-                        pw.Text(
-                          data.showroomType == 'Nexa' ? 'N E X A'  : 'MARUTI SUZUKI ARENA',
-                          style: pw.TextStyle(
-                          fontWeight: pw.FontWeight.bold,
-                          fontSize: 12,
-                          // TEXT COLOR
-                          color: data.showroomType == 'Nexa' ? PdfColors.white : PdfColors.black,
-                        ),
-                      ),
+                        children: [
+                          pw.Image(
+                            footerBanner,
+                            width: 50,
+                          ),
 
-
-
-                        pw.Image(
-                          footerBanner,
-                          width: 50,
-                        ),
-                      ],
+                          pw.Text(
+                            data.showroomType == 'Nexa'
+                                ? 'N E X A'
+                                : 'MARUTI SUZUKI ARENA',
+                            style: pw.TextStyle(
+                              fontWeight: pw.FontWeight.bold,
+                              fontSize: 12,
+                              color: data.showroomType == 'Nexa'
+                                  ? PdfColors.white
+                                  : PdfColors.black,
+                            ),
+                          ),
+                        ],
                     ),
+                    //   children: [
+                    //     pw.Text(
+                    //        pw.Image(
+                    //       footerBanner,
+                    //       width: 50,
+                    //     ),
+                          
+                    //       style: pw.TextStyle(
+                    //       fontWeight: pw.FontWeight.bold,
+                    //       fontSize: 12,
+                    //       // TEXT COLOR
+                    //       color: data.showroomType == 'Nexa' ? PdfColors.white : PdfColors.black,
+                    //     ),
+                    //   ),
+                       
+                    //    data.showroomType == 'Nexa' ? 'N E X A'  : 'MARUTI SUZUKI ARENA',
+
+                    //   ],
+                    // ),
+
+
 
                     pw.SizedBox(height: 15),
 
@@ -645,8 +724,7 @@ Future<String> generatePdfSave(
 
                 color: PdfColors.grey300,
 
-                padding:
-                    const pw.EdgeInsets.all(5),
+                padding: const pw.EdgeInsets.all(5),
 
                 child: pw.Row(
 
@@ -891,13 +969,11 @@ Future<String> generatePdfSave(
 
               pw.Padding(
 
-                padding:
-                    const pw.EdgeInsets.all(5),
+                padding:const pw.EdgeInsets.all(5),
 
                 child: pw.Column(
 
-                  crossAxisAlignment:
-                      pw.CrossAxisAlignment.start,
+                  crossAxisAlignment:pw.CrossAxisAlignment.start,
 
                   children: [
 
@@ -1016,8 +1092,7 @@ pw.TableRow buildRow(
 
       pw.Padding(
 
-        padding:
-            const pw.EdgeInsets.all(4),
+        padding:const pw.EdgeInsets.all(4),
 
         child: pw.Text(
           left,
@@ -1029,8 +1104,7 @@ pw.TableRow buildRow(
 
       pw.Padding(
 
-        padding:
-            const pw.EdgeInsets.all(4),
+        padding:const pw.EdgeInsets.all(4),
 
         child: pw.Text(
           right,
@@ -1059,9 +1133,7 @@ pw.TableRow priceRow(
 
       pw.Padding(
 
-        padding:
-            const pw.EdgeInsets.all(4),
-
+        padding:const pw.EdgeInsets.all(4),
         child: pw.Text(
           label,
           style: const pw.TextStyle(
@@ -1071,18 +1143,11 @@ pw.TableRow priceRow(
       ),
 
       pw.Padding(
-
-        padding:
-            const pw.EdgeInsets.all(4),
-
+        padding:const pw.EdgeInsets.all(4),
         child: pw.Align(
-
-          alignment:
-              pw.Alignment.centerRight,
-
+          alignment:pw.Alignment.centerRight,
           child: pw.Text(
             value.toStringAsFixed(0),
-
             style: const pw.TextStyle(
               fontSize: 8,
             ),
@@ -1161,26 +1226,17 @@ pw.TableRow highlightRow(
 pw.Widget bankRow(
     String label,
     String value) {
-
   return pw.Padding(
-
     padding:
         const pw.EdgeInsets.only(
       bottom: 3,
     ),
-
     child: pw.Row(
-
       children: [
-
         pw.SizedBox(
-
           width: 100,
-
           child: pw.Text(
-
             label,
-
             style: pw.TextStyle(
               fontWeight:
                   pw.FontWeight.bold,
@@ -1197,9 +1253,7 @@ pw.Widget bankRow(
         ),
 
         pw.Text(
-
           value,
-
           style: const pw.TextStyle(
             fontSize: 8,
             color: PdfColors.blue,
@@ -1229,7 +1283,6 @@ Future<String> uploadPdf(
     print(
       "UPLOAD ERROR : $e",
     );
-
     throw Exception(
       "PDF Upload Failed",
     );
@@ -1286,14 +1339,9 @@ Future<void> sendWhatsApp(
   var response = await http.post(
     url,
     headers: {
-
-      "Content-Type":
-          "application/json",
-
-      "Authorization":
-          "Bearer tUxEaKK7CtNazzPclhCWVMYpyi8extH7TxDE2h1ikvyEjTbVlTUKLODIj1JA6OL5"
+      "Content-Type":"application/json",
+      "Authorization":"Bearer tUxEaKK7CtNazzPclhCWVMYpyi8extH7TxDE2h1ikvyEjTbVlTUKLODIj1JA6OL5"
     },
-
     body: jsonEncode(body),
   );
   print(response.statusCode);
@@ -1352,8 +1400,6 @@ Future<void> sendWhatsApp(
               child: Column(
                 children: [
                   
-
-
                   // Image.asset("assets/images/logo.png", height: 70),
 
                  showroomType == 'Nexa'
@@ -1367,7 +1413,6 @@ Future<void> sendWhatsApp(
                     ),
 
                   const SizedBox(height: 10),
-
                   const Text(
                     "Customer Quotations",
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
@@ -1391,41 +1436,49 @@ Future<void> sendWhatsApp(
                     textField("City", cityController, icon: Icons.location_city),
                     const SizedBox(height: 20),
 
+                    dropdown(
+                      " Customer Type",
+                      customerType,
+                      ["Individual", "CSD"],
+                      (v) {
+                        setState(() {
+                          customerType = v;
+                        });
+                      },
+                    ),
+                          // dropdown(
+                          //   "Select Customer Type",
+                          //   customerType,
+                          //   ["Select Customer Type", "Individual", "CSD"],
+                          //   (v) {
+                          //     setState(() {
+                          //       customerType = v;
+                          //     });
+                          //   },
+                          // ),
 
-                          dropdown(
-                            "Select Customer Type",
-                            customerType,
-                            ["Select Customer Type", "Individual", "CSD"],
-                            (v) {
-                              setState(() {
-                                customerType = v;
-                              });
-                            },
-                          ),
                           const SizedBox(height: 20),
 
-
-
-                          dropdown("Select Model", model, modelList, onModelChanged),
+                          dropdown(" Model", model, modelList, onModelChanged),
+                          
                           const SizedBox(height: 20),
 
-
                           dropdown(
-                            "Select Variant",
+                            " Variant",
                             selectedVariant,
                             variantList,
                             onVariantChanged,
                           ),
                           const SizedBox(height: 20),
                           dropdown(
-                            "Variant Code",
+                            " Code",
                             selectedVariantCode,
                             variantCodeList,
                             onVariantCodeChanged,
                           ),
                           const SizedBox(height: 20),
                           dropdown(
-                            "Select Colour",
+                            " Colour",
                             color,
                             colorList,
                             (v) => setState(() => color = v),
@@ -1445,7 +1498,7 @@ Future<void> sendWhatsApp(
                      
 
                     dropdown(
-                      "Select Corporate",
+                      " Corporate",
                       corporateList.contains(corporate) ? corporate : null,
                       corporateList,
                       (v) async {
@@ -1463,7 +1516,7 @@ Future<void> sendWhatsApp(
 
                     const SizedBox(height: 20),
                   dropdown(
-                    "Select Department",
+                    " Department",
                     departmentList.contains(department) ? department : null,
                     departmentList,
                     (v) async {
@@ -1506,7 +1559,7 @@ Future<void> sendWhatsApp(
                        const SizedBox(height: 20),
 
                       dropdown(
-                        "Select MCD Parking Charge(NCR Only)",
+                        "MCD Parking Charge(NCR Only)",
                         parkingCharge,
                         ["Select MCD Parking Charge(NCR Only)", "Yes", "No"],
                         (v) {
@@ -1519,7 +1572,7 @@ Future<void> sendWhatsApp(
                       const SizedBox(height: 20),
 
                       dropdown(
-                        "Select Fastag",
+                        "Fastag",
                         fastag,
                         ["Select Fastag", "Yes", "No"],
                         (v) {
@@ -1532,7 +1585,7 @@ Future<void> sendWhatsApp(
 
                     const SizedBox(height: 20),
                     dropdown(
-                      "Select Insurance",
+                      "Insurance",
                       insurance,
                       ["Select Insurance", "FullPackage", "ZeroDept", "Commercial/Manual", "None"],
                       (v) async {
@@ -1572,11 +1625,9 @@ Future<void> sendWhatsApp(
                     ),
 
 
-
-
                   const SizedBox(height: 20),
                    dropdown(
-                      "Select Accessories",
+                      "Accessories",
                       accessories,
                       ["Select Accessories", "Basic", "Additional","None"],
                       (v) async {
@@ -1617,7 +1668,7 @@ Future<void> sendWhatsApp(
 
                     const SizedBox(height: 20),
                     dropdown(
-                      "Select RTO",
+                      "RTO",
                       rto,
                       ["Select RTO", "Same State", "Other State(Only NCR)", "Commercial/Manual/TRC"],
                       (v) {
@@ -1671,11 +1722,9 @@ Future<void> sendWhatsApp(
                       enabled: isRTOEnabled,
                     ),
 
-
                     const SizedBox(height: 20),
-
                     dropdown(
-                      "Select Ext.Warranty",
+                      "Ext.Warranty",
                       warranty,
                       [
                         "Select Ext.Warranty",
@@ -1726,7 +1775,7 @@ Future<void> sendWhatsApp(
                     const SizedBox(height: 20),
                     textField( "Warranty Amt", txtEWAmountController,  enabled: isWarrantyEnabled,),
                     const SizedBox(height: 20),
-                    dropdown("Select Consumer Offer", consumerOffer, ["Select Consumer Offer", "Yes", "No"], (v) {
+                    dropdown(" Consumer Offer", consumerOffer, ["Select Consumer Offer", "Yes", "No"], (v) {
                       setState(() {
                         consumerOffer = v;
                         isConsumerOfferEnabled = v == "Yes";
@@ -1738,7 +1787,7 @@ Future<void> sendWhatsApp(
                     const SizedBox(height: 20),
                     textField("Consumer Offer Amt", txtConsumerOfferController, enabled: isConsumerOfferEnabled),
                     const SizedBox(height: 20),
-                    dropdown("Select Exchange", exchange, ["Select Exchange", "Yes", "No"], (v) {
+                    dropdown(" Exchange", exchange, ["Select Exchange", "Yes", "No"], (v) {
                       setState(() {
                         exchange = v;
                         isExchangeEnabled = v == "Yes";
@@ -1750,7 +1799,7 @@ Future<void> sendWhatsApp(
                     const SizedBox(height: 20),
                     textField("Exchange Amt", txtExchangAmtController,enabled: isExchangeEnabled),
                     const SizedBox(height: 20),
-                    dropdown("Select Additional Discount", addDiscount, ["Select Additional Discount", "Yes", "No"], (v) {
+                    dropdown(" Additional Discount", addDiscount, ["Select Additional Discount", "Yes", "No"], (v) {
                       setState(() {
                         addDiscount = v;
                         isDiscountEnabled = v == "Yes";
@@ -1780,13 +1829,44 @@ Future<void> sendWhatsApp(
                   }),
                   const SizedBox(height: 20),
                    dropdown(
-                    "Select Bank",
+                    "Bank",
                     bank,
                     financerNames,   // ✅ API data here
                     isFinance ? (v) => setState(() => bank = v) : null,
                   ),    
                   const SizedBox(height: 20),
-                  textField("Tenure", tenureController, enabled: isFinance),
+
+
+                  DropdownButtonFormField<String>(
+                  value: tenureController.text.isNotEmpty
+                      ? tenureController.text
+                      : null,
+                  decoration: const InputDecoration(
+                    labelText: "Tenure",
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    '12','24','36','48','60','72','84'
+                  ].map((value) {
+                    return DropdownMenuItem(
+                      value: value,
+                      child: Text('$value Months'),
+                    );
+                  }).toList(),
+                  onChanged: isFinance
+                  ? (value) {
+                      setState(() {
+                        tenureController.text = value!;
+                      });
+
+                      calculateEMI();
+                    }
+                  : null,
+                ),
+
+
+
+                  // textField("Tenure", tenureController, enabled: isFinance),
                   const SizedBox(height: 20),
                   dropdown( "Finance On", financeOn, ["ExShowroom", "OnRoad", "Manual", "Cash"],
                     isFinance
@@ -1801,9 +1881,34 @@ Future<void> sendWhatsApp(
                         : null,
                   ),
                   const SizedBox(height: 20),
-                  textField("ROI", interestController, enabled: isFinance),
+
+                  // textField("Rate of interest", interestController, enabled: isFinance),
+                  TextFormField(
+                    controller: interestController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*\.?\d*$'),
+                      ),
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: "Rate of Interest",
+                    ),
+                  ),
+
                   const SizedBox(height: 20),
-                  textField("Loan Amount", loanAmountController, enabled: isFinance),
+
+                  TextFormField(
+                  controller: loanAmountController,
+                  keyboardType: TextInputType.number,
+                  onChanged: (value) {
+                    calculateEMI();
+                  },
+                  decoration: const InputDecoration(
+                    labelText: "Loan Amount",
+                  ),
+                ),
+                  // textField("Loan Amount", loanAmountController, enabled: isFinance),
                      // ✅ Loan %
                   const SizedBox(height: 20),
                   dropdown( "Loan %", percent, ["100", "95", "90", "85", "80", "75", "70"],
@@ -1817,10 +1922,26 @@ Future<void> sendWhatsApp(
                         : null,
                   ),
                   const SizedBox(height: 20),
-                  textField("EMI", emiController, enabled: isFinance),
+
+                  // textField("EMI", emiController, enabled: isFinance),
+                  TextFormField(
+                    controller: emiController,
+                    readOnly: true,
+                    decoration: const InputDecoration(
+                      labelText: "EMI",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+
+
+
                   const SizedBox(height: 20),
+                 
+                 
                   Row(
-                  mainAxisAlignment: MainAxisAlignment.end, 
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center, 
                   children: [
                       ElevatedButton(
                     onPressed: () async {
@@ -1916,67 +2037,67 @@ Future<void> sendWhatsApp(
                 ),
 
                 const SizedBox(width: 10), // spacing
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  ),   
-                  onPressed: () async {
-                    if (_formKey.currentState!.validate()) {
-                    final prefs = await SharedPreferences.getInstance();
-                    String locCode =prefs.getString("locationCode") ?? "";
-                    final locationData =await apiService.getLocationByDmsCode(locCode);
-                    final isNexa = showroomType == 'Nexa';
-                    final data = QuoteData(
-                        customerName: nameController.text.trim(),
-                        contactNo: phoneController.text.trim(),
-                        email: emailController.text.trim(),
-                        city: cityController.text.trim(),
-                        professionType: profession ?? '',
-                        corporateName: corporate ?? '',
-                        departmentName: department ?? '',
-                        rmName: userName,
-                        rmPhone: userId,
-                        srmName: '',
-                        srmPhone: '',
-                        quotationDate: DateTime.now().toString(),
-                        modelWithFuel: model ?? '',
-                        variant: selectedVariant ?? '',
-                        color: color ?? '',
-                        customerFinancierType: 'Individual / ${financier ?? "Cash"}',
-                        exShowroom: double.tryParse(exShowroomController.text) ?? 0,
-                        insurance: double.tryParse(txtInsAmtController.text) ?? 0,
-                        ewCcpAmount: double.tryParse(txtEWAmountController.text) ?? 0,
-                        mgaOrGna: double.tryParse(txtMGAAmtController.text) ?? 0,
-                        rtoAmount: double.tryParse(txtRTOAmtController.text) ?? 0,
-                        fasTag: fastag == 'Yes' ? 600 : 0,
-                        mcdParking: parkingCharge == 'Yes' ? 2500 : 0,
-                        corporateOffer: double.tryParse(txtCorporateOfferController.text) ?? 0,
-                        consumerOffer: double.tryParse(txtConsumerOfferController.text) ?? 0,
-                        exchangeOffer: double.tryParse(txtExchangAmtController.text) ?? 0,
-                        addnlDiscount: double.tryParse(txtAddDisController.text) ?? 0,
-                        financeOn: financier == 'Finance' ? (bank ?? 'Finance') : 'Cash',
-                        loanAmount: double.tryParse(loanAmountController.text) ?? 0,
-                        roi: double.tryParse(interestController.text) ?? 0,
-                        tenureYears: int.tryParse(tenureController.text) ?? 0,
-                        emiAmount: double.tryParse(emiController.text) ?? 0,
-                        showroomType: showroomType ?? 'Arena',
-                        locationAddress: locationData['add1'] ?? '',
-                        locationCity: locationData['locCity'] ?? '',
-                        locationPincode: locationData['pincode'] ?? '',
-                        contactPhone:locationData['contactNo'] ?? '',
-                        locationEmail: locationData['locEmail'] ?? '',
-                        accountNumber: locationData['accountNo'] ?? '',
-                        bankName:locationData['bankname'] ?? '',     
-                        beneficiary:locationData['beneficiary'] ?? '',
-                        ifscCode:locationData['ifscCode'] ?? '',        
-                        branchName: locationData['branchAddress'] ?? '',
-                        hpnCharges: 0,   
-                        tcsPct: 0, 
-                          );
-                      await generatePdf(data);
-                    }
-                  },
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    ),   
+                      onPressed: () async {
+                        if (_formKey.currentState!.validate()) {
+                        final prefs = await SharedPreferences.getInstance();
+                        String locCode =prefs.getString("locationCode") ?? "";
+                        final locationData =await apiService.getLocationByDmsCode(locCode);
+                        final isNexa = showroomType == 'Nexa';
+                        final data = QuoteData(
+                            customerName: nameController.text.trim(),
+                            contactNo: phoneController.text.trim(),
+                            email: emailController.text.trim(),
+                            city: cityController.text.trim(),
+                            professionType: profession ?? '',
+                            corporateName: corporate ?? '',
+                            departmentName: department ?? '',
+                            rmName: userName,
+                            rmPhone: userId,
+                            srmName: '',
+                            srmPhone: '',
+                            quotationDate: DateTime.now().toString(),
+                            modelWithFuel: model ?? '',
+                            variant: selectedVariant ?? '',
+                            color: color ?? '',
+                            customerFinancierType: 'Individual / ${financier ?? "Cash"}',
+                            exShowroom: double.tryParse(exShowroomController.text) ?? 0,
+                            insurance: double.tryParse(txtInsAmtController.text) ?? 0,
+                            ewCcpAmount: double.tryParse(txtEWAmountController.text) ?? 0,
+                            mgaOrGna: double.tryParse(txtMGAAmtController.text) ?? 0,
+                            rtoAmount: double.tryParse(txtRTOAmtController.text) ?? 0,
+                            fasTag: fastag == 'Yes' ? 600 : 0,
+                            mcdParking: parkingCharge == 'Yes' ? 2500 : 0,
+                            corporateOffer: double.tryParse(txtCorporateOfferController.text) ?? 0,
+                            consumerOffer: double.tryParse(txtConsumerOfferController.text) ?? 0,
+                            exchangeOffer: double.tryParse(txtExchangAmtController.text) ?? 0,
+                            addnlDiscount: double.tryParse(txtAddDisController.text) ?? 0,
+                            financeOn: financier == 'Finance' ? (bank ?? 'Finance') : 'Cash',
+                            loanAmount: double.tryParse(loanAmountController.text) ?? 0,
+                            roi: double.tryParse(interestController.text) ?? 0,
+                            tenureYears: int.tryParse(tenureController.text) ?? 0,
+                            emiAmount: double.tryParse(emiController.text) ?? 0,
+                            showroomType: showroomType ?? 'Arena',
+                            locationAddress: locationData['add1'] ?? '',
+                            locationCity: locationData['locCity'] ?? '',
+                            locationPincode: locationData['pincode'] ?? '',
+                            contactPhone:locationData['contactNo'] ?? '',
+                            locationEmail: locationData['locEmail'] ?? '',
+                            accountNumber: locationData['accountNo'] ?? '',
+                            bankName:locationData['bankname'] ?? '',     
+                            beneficiary:locationData['beneficiary'] ?? '',
+                            ifscCode:locationData['ifscCode'] ?? '',        
+                            branchName: locationData['branchAddress'] ?? '',
+                            hpnCharges: 0,   
+                            tcsPct: 0, 
+                              );
+                          await generatePdf(data);
+                        }
+                      },
                       child: Text("Preview $showroomType"),
                       
                     ),

@@ -6,9 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AuthService {
   // 🔥 Use this for real device. For emulator keep 10.0.2.2
   // static const String baseUrl = "http://10.0.2.2:5247";
-  static const String baseUrl = "http://localhost:5247";
+  //  static const String baseUrl = "http://localhost:5247";
   //  static const String baseUrl = "http://103.203.224.110";
-  //  static const String baseUrl = "http://103.203.224.110/salesapi";
+   static const String baseUrl = "http://103.203.224.110/salesapi";
 
 
 // ── Stored session ─────────────────────────────────────────
