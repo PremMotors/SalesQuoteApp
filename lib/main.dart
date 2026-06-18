@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:sales_quote_arnexa/theme/app_theme.dart';
-import 'package:sales_quote_arnexa/screens/login_screen.dart';
-import 'package:sales_quote_arnexa/screens/customer_quote_screen.dart';
+import 'package:pmpl_salesquote/theme/app_theme.dart';
+import 'package:pmpl_salesquote/screens/login_screen.dart';
+import 'package:pmpl_salesquote/screens/customer_quote_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
@@ -35,7 +35,7 @@ class SalesQuoteApp extends StatelessWidget {
 
       // 🔹 LOGIN CHECK
       home: isLogin
-          ? CustomerQuoteScreen(userName: "")
+          ? CustomerQuoteScreen(userName: "", teamLeaderName: "", teamLeaderCont: "")
           : const LoginScreen(),
     );
   }

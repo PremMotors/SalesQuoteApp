@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../models/models.dart';
-import 'package:sales_quote_arnexa/services/api_service.dart';
+import 'package:pmpl_salesquote/services/api_service.dart';
 import 'screens/login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {

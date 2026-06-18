@@ -6,7 +6,7 @@ import 'quotes_screen.dart';
 import 'new_quote_screen.dart';
 import 'screens/customers_screen.dart';
 import 'profile_screen.dart';
-import 'package:sales_quote_arnexa/main_shell.dart';
+import 'package:pmpl_salesquote/main_shell.dart';
 export '../models/models.dart';
 
 class MainShell extends StatefulWidget {

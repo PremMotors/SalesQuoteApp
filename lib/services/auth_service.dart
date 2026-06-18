@@ -1,14 +1,16 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import 'package:sales_quote_arnexa/models/price_model.dart';
+import 'package:pmpl_salesquote/models/price_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 class AuthService {
   // 🔥 Use this for real device. For emulator keep 10.0.2.2
   // static const String baseUrl = "http://10.0.2.2:5247";
   //  static const String baseUrl = "http://localhost:5247";
   //  static const String baseUrl = "http://103.203.224.110";
-   static const String baseUrl = "http://103.203.224.110/salesapi";
+  //  static const String baseUrl = "http://103.203.224.110/salesapi";
+  //  static const String baseUrl = "http://192.168.3.71/salesapi";
+   static const String baseUrl = "http://103.168.210.89/salesapi";
 
 
 // ── Stored session ─────────────────────────────────────────
@@ -37,6 +39,8 @@ class AuthService {
       "userId": userId,
       "Pass": Pass,
       "showroomType": showroomType,
+      // "TeamLeaderName": TeamLeaderName,
+      // "TeamLeaderCont": TeamLeaderCont,
     }),
   );
 
@@ -108,6 +112,53 @@ Future<List<String>> GetCorporateByScheme(String scheme) async {
 }
 
 
+Future<double> parkingChargeAmount(
+  String model,
+  String locationCode,
+) async {
+  final response = await http.get(
+    Uri.parse(
+      '$baseUrl/api/PriceList/parkingChargeAmount'
+      '?model=$model'
+      '&locationCode=$locationCode',
+    ),
+  );
+
+  print("Parking Response: ${response.body}");
+
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body);
+
+    return (data['parkingCharge'] ?? 0).toDouble();
+  }
+
+  throw Exception("Failed to load parking charge");
+}
+
+
+Future<double> fastagAmount(
+  String model,
+  String locationCode,
+) async {
+  final response = await http.get(
+    Uri.parse(
+      '$baseUrl/api/PriceList/FastagAmount'
+      '?model=$model'
+      '&locationCode=$locationCode',
+    ),
+  );
+
+  print("Response: ${response.body}");
+
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body);
+
+    return (data['fastTag'] ?? 0).toDouble();
+  }
+
+  return 0;
+}
+
 
 Future<double> getTotalOffer(String model, String corporateName) async {
   final url =
@@ -127,14 +178,16 @@ Future<double> getTotalOffer(String model, String corporateName) async {
   }
 }
 
-
-Future<double> getInsuranceAmount(String modelWithType, String location) async {
-
-  if (modelWithType.isEmpty || location.isEmpty) {
-    throw Exception("Invalid params: model or location empty");
-  }
-
-  final url = "$baseUrl/api/pricelist/insurance?modelWithType=${Uri.encodeComponent(modelWithType)}&location=${Uri.encodeComponent(location)}";
+Future<double> getCcpAmount(
+  String modelWithType,
+  String location,
+  String ccpType,
+) async {
+  final url =
+      "$baseUrl/api/PriceList/getCcpAmount"
+      "?modelWithType=${Uri.encodeComponent(modelWithType)}"
+      "&location=${Uri.encodeComponent(location)}"
+      "&Ccp=${Uri.encodeComponent(ccpType)}";
 
   print("URL: $url");
 
@@ -145,10 +198,94 @@ Future<double> getInsuranceAmount(String modelWithType, String location) async {
 
   if (response.statusCode == 200) {
     return double.tryParse(response.body) ?? 0;
+  }
+
+  throw Exception("Failed to load CCP Amount");
+}
+Future<double> getExtWarrantyAmount(
+  String modelWithType,
+  String location,
+  String extWarranty,
+) async {
+  final url =
+      "$baseUrl/api/PriceList/ExtWarrantyAmount"
+      "?modelWithType=${Uri.encodeComponent(modelWithType)}"
+      "&location=${Uri.encodeComponent(location)}"
+      "&ExtWarranty=${Uri.encodeComponent(extWarranty)}";
+
+  print("URL: $url");
+
+  final response = await http.get(Uri.parse(url));
+
+  print("STATUS: ${response.statusCode}");
+  print("BODY: ${response.body}");
+
+  if (response.statusCode == 200) {
+    return double.tryParse(response.body) ?? 0;
+  }
+
+  throw Exception("Failed to load Extended Warranty Amount");
+}
+
+Future<double> getInsuranceAmount(
+  String modelWithType,
+  String location,
+  String insuranceType,
+) async {
+
+  if (modelWithType.isEmpty || location.isEmpty || insuranceType.isEmpty) {
+    throw Exception("Invalid params: empty values");
+  }
+
+  final url =
+      "$baseUrl/api/PriceList/insurance"
+      "?modelWithType=${Uri.encodeComponent(modelWithType)}"
+      "&location=${Uri.encodeComponent(location)}"
+      "&insuranceType=${Uri.encodeComponent(insuranceType)}";
+
+  print("URL: $url");
+
+  final response = await http.get(Uri.parse(url));
+
+  print("STATUS: ${response.statusCode}");
+  print("BODY: ${response.body}");
+
+  if (response.statusCode == 200) {
+    return double.tryParse(response.body.toString()) ?? 0;
   } else {
     throw Exception("Failed to load insurance");
   }
 }
+
+Future<double> getRTOAmout(
+  String modelWithType,
+  String location,
+  String rto,
+) async {
+  if (modelWithType.isEmpty || location.isEmpty || rto.isEmpty) {
+    throw Exception("Invalid params: empty values");
+  }
+
+  final url =
+      "$baseUrl/api/PriceList/RTOAmout"
+      "?modelWithType=${Uri.encodeComponent(modelWithType)}"
+      "&location=${Uri.encodeComponent(location)}"
+      "&rto=${Uri.encodeComponent(rto)}";
+
+  print("URL: $url");
+
+  final response = await http.get(Uri.parse(url));
+
+  print("STATUS: ${response.statusCode}");
+  print("BODY: ${response.body}");
+
+  if (response.statusCode == 200) {
+    return double.tryParse(response.body) ?? 0;
+  }
+
+  throw Exception("Failed to load RTO amount");
+}
+
 
 Future<double> getAccessoriesAmount(String modelWithType, String location) async {
 
@@ -175,6 +312,7 @@ Future<double> getAccessoriesAmount(String modelWithType, String location) async
 
 Future<List<PriceModel>> getAllData() async {
   final prefs = await SharedPreferences.getInstance();
+  
 
   // 🔥 Yaha se loc_Code mil raha hai
   final locationCode = prefs.getString("locationCode") ?? "";
@@ -312,7 +450,7 @@ Future<String?> uploadPdf(
       await http.MultipartFile.fromPath(
         'file',
         filePath,
-        filename: fileName,
+        filename: fileName, 
       ),
     );
 
@@ -331,8 +469,7 @@ Future<String?> uploadPdf(
 
       if (responseData.isNotEmpty) {
 
-        final json =
-            jsonDecode(responseData);
+        final json = jsonDecode(responseData);
 
         return json["url"];
       }
@@ -348,10 +485,61 @@ Future<String?> uploadPdf(
   }
 }
 
+
+Future<double> getConsumerOffer(
+    String modelGroup,
+    String locationCode,
+) async {
+  final response = await http.get(
+    Uri.parse(
+      '$baseUrl/api/PriceList/GetConsumerOffer?modelGroup=$modelGroup&locationCode=$locationCode',
+    ),
+  );
+  if (response.statusCode == 200) {
+    return double.tryParse(response.body) ?? 0;
+  }
+  return 0;
+}
+
+
+Future<double> getExchangeOffer(
+  String modelGroup,
+  String locationCode,
+) async {
+  final response = await http.get(
+    Uri.parse(
+      '$baseUrl/api/PriceList/GetExchangeOffer?modelGroup=$modelGroup&locationCode=$locationCode',
+    ),
+  );
+
+  if (response.statusCode == 200) {
+    return double.tryParse(response.body) ?? 0;
+  }
+
+  return 0;
+}
+
+Future<List<String>> getModelsByCustomerType(
+    String custType,
+    String locationCode,
+) async {
+  final response = await http.get(
+    Uri.parse(
+      '$baseUrl/api/PriceList/GetModelsByCustomerType?custType=$custType&locationCode=$locationCode',
+    ),
+  );
+
+  if (response.statusCode == 200) {
+    final List data = jsonDecode(response.body);
+    return data.map((e) => e.toString()).toList();
+  }
+  return [];
+}
+
 Future<double> getWarrantyAmount(
   String model,
   String ewType,
-  String ccpType,
+  String ccpType, 
 ) async {
    
   final prefs = await SharedPreferences.getInstance();
@@ -375,5 +563,8 @@ Future<double> getWarrantyAmount(
   } else {
     throw Exception("Failed to load warranty");
   }
+
+
+  
 }
 }

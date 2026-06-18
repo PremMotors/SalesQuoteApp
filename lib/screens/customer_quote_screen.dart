@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sales_quote_arnexa/screens/login_screen.dart';
-import 'package:sales_quote_arnexa/screens/pdf_screen.dart';
-import 'package:sales_quote_arnexa/services/auth_service.dart';
-import 'package:sales_quote_arnexa/models/price_model.dart';
+import 'package:pmpl_salesquote/screens/login_screen.dart';
+import 'package:pmpl_salesquote/screens/pdf_screen.dart';
+import 'package:pmpl_salesquote/services/auth_service.dart';
+import 'package:pmpl_salesquote/models/price_model.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -14,11 +14,13 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'dart:math';
-
+import 'package:intl/intl.dart';
 
 class CustomerQuoteScreen extends StatefulWidget {
   final String userName;
-  const CustomerQuoteScreen({super.key, required this.userName});
+  final String teamLeaderName;
+  final String teamLeaderCont;
+  const CustomerQuoteScreen({super.key, required this.userName, required this.teamLeaderName, required this.teamLeaderCont});
   @override
   State<CustomerQuoteScreen> createState() => _CustomerQuoteScreenState();
 }
@@ -57,7 +59,9 @@ class _CustomerQuoteScreenState extends State<CustomerQuoteScreen> {
   final _formKey = GlobalKey<FormState>();
    String userName = "";
    String userId = "";
-   String? locationCode;
+   String teamLeaderName = "";
+   String teamLeaderCont = "";
+  
    String? showroomType = "";
   /// 🔹 BASIC CONTROLLERS
   final nameController = TextEditingController();
@@ -66,11 +70,14 @@ class _CustomerQuoteScreenState extends State<CustomerQuoteScreen> {
   final cityController = TextEditingController();
   /// 🔹 PRICE CONTROLLERS
   final exShowroomController = TextEditingController();
-  final txtCorporateOfferController = TextEditingController();
+  final parkingChargeController = TextEditingController();
+  final FastagAmountController = TextEditingController();
+  final totalOfferController = TextEditingController();
   final txtInsAmtController = TextEditingController();
   final txtMGAAmtController = TextEditingController();
   final txtRTOAmtController = TextEditingController();
   final txtEWAmountController = TextEditingController();
+  final txtCcpAmountController = TextEditingController();
   final txtConsumerOfferController = TextEditingController();
   final txtExchangAmtController = TextEditingController();
   final txtAddDisController = TextEditingController();
@@ -79,10 +86,11 @@ class _CustomerQuoteScreenState extends State<CustomerQuoteScreen> {
   final interestController = TextEditingController();
   final loanAmountController = TextEditingController();
   final emiController = TextEditingController();
+  final tcsPctController = TextEditingController();
   /// 🔹 DROPDOWN VARIABLES
   String? customerType, model;
   String? color, profession, corporate, department, parking;
-  String? fastag, insurance, accessories, rto, warranty;
+  String? fastag, insurance, accessories, rto, warranty,FasTag,Ccp;
   String? consumerOffer, exchange, addDiscount;
   String? financier, bank, financeOn, percent;
   bool isFinance = false;
@@ -103,26 +111,42 @@ class _CustomerQuoteScreenState extends State<CustomerQuoteScreen> {
   bool isAccessoriesEnabled = false;
   bool isRTOEnabled = false;
   bool isWarrantyEnabled = false;
+  bool isCcpEnabled = false;
   bool isConsumerOfferEnabled = false;
   bool isExchangeEnabled = false;
   bool isDiscountEnabled = false;
+  bool isExshowroomEnabled = false;
   List<String> corporateList = [];
   double totalOffer = 0;
-  final totalOfferController = TextEditingController();
+  // final totalOfferController = TextEditingController();
   String? parkingCharge;
+
+String selectedModelGroup = "";
+String custType = "";
+ String? locationCode = " ";
  /// ================= API LOAD =================
  
 final AuthService apiService = AuthService();
 void loadData() async {
   allData = await apiService.getAllData();
-  modelList = allData.map((e) => e.modelGroup).toSet().toList();
+  
+  modelList = allData.map((e) => e.modelGroup).toSet().toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+  // modelList = allData.map((e) => e.modelGroup).toSet().toList();
+
   setState(() {});
 }
 Future<void> onModelChanged(String? v) async {
   if (v == null) return;
   setState(() {
     model = v;
-    variantList = allData .where((e) => e.modelGroup == v).map((e) => e.description).toSet().toList();
+    // variantList = allData .where((e) => e.modelGroup == v).map((e) => e.description).toSet().toList();
+    variantList = allData.where((e) => e.modelGroup == v)
+    .map((e) => e.description)
+    .toSet()
+    .toList()
+  ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+
     selectedVariant = null;
     selectedVariantCode = null;
     departmentList = [];   // 🔥 clear old data
@@ -143,23 +167,107 @@ void onVariantChanged(String? v) {
   variantCodeList = filtered.map((e) => e.modelWithType).toSet().toList();
   // 🔥 AUTO FILL Ex Showroom (take first item)
   if (filtered.isNotEmpty) {
-    exShowroomController.text =
-        filtered.first.exShowroom.toString();
+    exShowroomController.text = filtered.first.exShowroom.toString();
   }
   selectedVariantCode = null;
   colorList = [];
   setState(() {});
 }
+
+// void onVariantCodeChanged(String? v) async {
+//   if (v == null) return;
+//   selectedVariantCode = v;
+//   // 🔥 Load colors from API
+//   colorList = await apiService.getColors(v);
+//   colorList.insert(0, "Select Colour");
+//   color = "Select Colour";
+//   setState(() {});
+// }
 void onVariantCodeChanged(String? v) async {
   if (v == null) return;
+
   selectedVariantCode = v;
-  // 🔥 Load colors from API
+
   colorList = await apiService.getColors(v);
-  colorList.insert(0, "Select Colour");
-  color = "Select Colour";
+
+  color = null; // Clear selection
+
   setState(() {});
 }
 
+void resetForm() {
+  _formKey.currentState?.reset();
+
+  setState(() {
+    // Dropdowns
+    customerType = null;
+    model = null;
+    selectedVariant = null;
+    selectedVariantCode = null;
+    color = null;
+    profession = null;
+    insurance = null;
+    accessories = null;
+    rto = null;
+    warranty = null;
+    Ccp = null;
+    FasTag = null;
+    parkingCharge = null;
+    corporate = null;
+    department = null;
+    consumerOffer = null;
+    exchange = null;
+    addDiscount = null;
+    financier = null;
+    bank = null;
+    financeOn = null;
+    percent = null;
+
+    // Flags
+    isInsuranceEnabled = false;
+    isAccessoriesEnabled = false;
+    isRTOEnabled = false;
+    isWarrantyEnabled = false;
+    isCcpEnabled = false;
+    isConsumerOfferEnabled = false;
+    isExchangeEnabled = false;
+    isDiscountEnabled = false;
+    isFinance = false;
+
+    // Controllers
+    nameController.clear();
+    phoneController.clear();
+    emailController.clear();
+    cityController.clear();
+
+    exShowroomController.clear();
+    parkingChargeController.clear();
+    FastagAmountController.clear();
+    totalOfferController.clear();
+    txtInsAmtController.clear();
+    txtMGAAmtController.clear();
+    txtRTOAmtController.clear();
+    txtEWAmountController.clear();
+    txtCcpAmountController.clear();
+    txtConsumerOfferController.clear();
+    txtExchangAmtController.clear();
+    txtAddDisController.clear();
+
+    tenureController.clear();
+    interestController.clear();
+    loanAmountController.clear();
+    emiController.clear();
+
+    totalOfferController.clear();
+
+    // Lists
+    variantList.clear();
+    variantCodeList.clear();
+    colorList.clear();
+    departmentList.clear();
+    corporateList.clear();
+  });
+}
 Future<void> fetchCorporate(String model) async {
   try {
     final data = await apiService.getDepartments(model);
@@ -205,10 +313,13 @@ Future<int?> saveData() async {
     "ExShowroomPrice":double.tryParse(exShowroomController.text,) ?? 0,
     "CorporateName": corporate,
     "DeptName": department,
-    "MCDParkingCharges":parking == "Yes" ? 1 : 0,
-    "CorporateOffer":double.tryParse(txtCorporateOfferController.text,) ?? 0,
+    // "MCDParkingCharges":parking == "Yes" ? 1 : 0,
+    "CorporateOffer":double.tryParse(totalOfferController.text,) ?? 0,
     "InsurancePer": 0,
-    "FastTag":fastag == "Yes" ? 1 : 0,
+    // "FastTag":fastag == "Yes" ? 1 : 0,
+    "FasTag":double.tryParse(FastagAmountController.text,) ?? 0,
+    "MCDParkingCharges":double.tryParse(parkingChargeController.text,) ?? 0,
+    "CcpAmt":double.tryParse(txtCcpAmountController.text,) ?? 0,
     "InsuranceAmt":double.tryParse(txtInsAmtController.text,) ?? 0,
     "AccessoriesPer": 0,
     "AccessoriesAmt":double.tryParse(txtMGAAmtController.text,) ?? 0,
@@ -270,70 +381,73 @@ Future<int?> saveData() async {
     loanAmountController.addListener(calculateEMI);
     interestController.addListener(calculateEMI);
   }
-  List<String> professionList =  [  "Select Profession Type", "Farmers","HouseWife", "NRI", "Other", "Proprietor/Trade", "Retired", "Salaried Govt.","Salaried Private", "Student" ];
-  Widget textField(
-    String label,
-    TextEditingController controller, {
-    bool enabled = true,
-    bool isPhone = false,
-    IconData? icon,
-    bool isEmail = false,
-    bool isRequired = true,
-    bool isLowerCase = false,
-  }) {
-
+  List<String> professionList =  ["Farmers","HouseWife", "NRI", "Other", "Proprietor/Trade", "Retired", "Salaried Govt.","Salaried Private", "Student" ];
+  
+ Widget textField(
+  String label,
+  TextEditingController controller, {
+  bool enabled = true,
+  bool isPhone = false,
+  bool isNumeric = false,
+  IconData? icon,
+  bool isEmail = false,
+  bool isRequired = true,
+  bool isLowerCase = false,
+  int? maxLength,
+}) {
   return TextFormField(
     controller: controller,
     enabled: enabled,
-    autovalidateMode:AutovalidateMode.onUserInteraction,
-    keyboardType:isPhone ? TextInputType.number: TextInputType.text,
-    // ✅ AUTO CAPITAL LETTERS
-    inputFormatters: isPhone
+    autovalidateMode: AutovalidateMode.onUserInteraction,
+
+    keyboardType: (isPhone || isNumeric)
+        ? TextInputType.number
+        : TextInputType.text,
+inputFormatters: isNumeric
     ? [
         FilteringTextInputFormatter.digitsOnly,
-        LengthLimitingTextInputFormatter(10),
+        if (maxLength != null)
+          LengthLimitingTextInputFormatter(maxLength),
       ]
-    : isLowerCase
+    : isPhone
         ? [
-            LowerCaseTextFormatter(),
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(10),
           ]
-        : [
-            UpperCaseTextFormatter(),
-          ],
+        : isLowerCase
+            ? [
+                LowerCaseTextFormatter(),
+              ]
+            : [
+                UpperCaseTextFormatter(),
+              ],
+              
 
-    decoration: InputDecoration(
+      decoration: InputDecoration(
       labelText: label,
-      prefixIcon:icon != null ? Icon(icon) : null,
+      prefixIcon: icon != null ? Icon(icon) : null,
       filled: true,
-      fillColor:enabled? Colors.white: Colors.grey.shade300,
-      border: OutlineInputBorder(),
+      fillColor: enabled ? Colors.white : Colors.grey.shade300,
+      border: const OutlineInputBorder(),
     ),
 
-    validator: (value) 
-    {
+    validator: (value) {
       if (!enabled) return null;
 
-      if (isRequired && (value == null || value.isEmpty)) 
-      {
-
-        return "$label required";
+      if (isRequired && (value == null || value.isEmpty)) {
+        return "$label Required";
       }
 
       if (isPhone && value!.length != 10) {
- 
         return "Phone must be 10 digits";
       }
 
-      if (isEmail && value != null && value.isNotEmpty) 
-      
-      {
-
+      if (isEmail && value != null && value.isNotEmpty) {
         final regex = RegExp(
           r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
         );
 
         if (!regex.hasMatch(value)) {
-
           return "Invalid email";
         }
       }
@@ -347,7 +461,6 @@ Future<int?> saveData() async {
 
 Future<void> loadShowroomType() async {
   final prefs = await SharedPreferences.getInstance();
-
   setState(() {
     showroomType = prefs.getString("showroomType") ?? "";
   });
@@ -355,30 +468,15 @@ Future<void> loadShowroomType() async {
 Future<void> loadUserData() async {
   final prefs = await SharedPreferences.getInstance();
   setState(() {
-    userName = prefs.getString("UserName") ?? "";
+     userName = prefs.getString("UserName") ?? "";
      userId = prefs.getString("userId") ?? "";
      showroomType = prefs.getString("showroomType") ?? "";
+     teamLeaderName = prefs.getString("teamLeaderName") ?? "";
+     teamLeaderCont = prefs.getString("teamLeaderCont") ?? "";
   });
 }
 
-  /// 🔹 DROPDOWN
-  // Widget dropdown(String label, String? value, List<String> items,
-  //     Function(String?)? onChange) {
-  //   return DropdownButtonFormField<String>(
-  //     isExpanded: true,
-  //     value: value,
-  //     hint: Text(label),
-  //     items: items
-  //         .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-  //         .toList(),
-  //     onChanged: onChange,
-  //     decoration: InputDecoration(
-  //       filled: true,
-  //       fillColor: Colors.white,
-  //       border: OutlineInputBorder(),
-  //     ),
-  //   );
-  // }
+
 Widget dropdown(
   String label,
   String? value,
@@ -415,23 +513,16 @@ Widget dropdown(
   }
 
 void calculateEMI() {
-  double loanAmount =
-      double.tryParse(loanAmountController.text.replaceAll(',', '')) ?? 0;
-
+  double loanAmount = double.tryParse(loanAmountController.text.replaceAll(',', '')) ?? 0;
   // Dropdown se direct months mil rahe hain
   int months = int.tryParse(tenureController.text) ?? 0;
+  double annualInterestRate = double.tryParse(interestController.text) ?? 0;
 
-  double annualInterestRate =
-      double.tryParse(interestController.text) ?? 0;
-
-  if (loanAmount > 0 &&
-      months > 0 &&
-      annualInterestRate > 0) {
+  if (loanAmount > 0 && months > 0 && annualInterestRate > 0) {
 
     double monthlyRate = annualInterestRate / 12 / 100;
 
-    double emi = (loanAmount *
-            monthlyRate *
+    double emi = (loanAmount *  monthlyRate *
             pow(1 + monthlyRate, months)) /
         (pow(1 + monthlyRate, months) - 1);
 
@@ -445,54 +536,241 @@ void calculateEMI() {
   }
 }
 
+double calculateTCS(
+  double exShowroom,
+  double totalOffers,
+) {
+  double costoffvehicle =
+      exShowroom - totalOffers;
+
+  if (costoffvehicle >= 1000000) {
+    return costoffvehicle * 0.01;
+  }
+
+  return 0;
+}
+
+void calculateTCSAmount() {
+  double exShowroom = double.tryParse(exShowroomController.text) ?? 0;
+
+  double totalOffers =
+      (double.tryParse(totalOfferController.text) ?? 0) +
+      (double.tryParse(txtConsumerOfferController.text) ?? 0) +
+      (double.tryParse(txtExchangAmtController.text) ?? 0) +
+      (double.tryParse(txtAddDisController.text) ?? 0);
+
+  double costOfVehicle = exShowroom - totalOffers;
+
+  double tcs = 0;
+
+  if (costOfVehicle >= 1000000) {
+    tcs = costOfVehicle * 0.01;
+  }
+
+  setState(() {
+    tcsPctController.text = tcs.toStringAsFixed(0);
+  });
+}
+
+
+// void calculateLoanAmount() {
+//   double exShowroom = double.tryParse(exShowroomController.text) ?? 0;
+//   double insurance = double.tryParse(txtInsAmtController.text) ?? 0;
+//   double accessories = double.tryParse(txtMGAAmtController.text) ?? 0;
+//   double rto = double.tryParse(txtRTOAmtController.text) ?? 0;
+//   double warranty = double.tryParse(txtEWAmountController.text) ?? 0;
+//   double ewCcpAmount = double.tryParse(txtCcpAmountController.text) ?? 0;
+//   double fasTag = double.tryParse(FastagAmountController.text) ?? 0;
+//   double mcdParking = double.tryParse(parkingChargeController.text) ?? 0;
+//   double corporateOffer = double.tryParse(totalOfferController.text) ?? 0;
+//   double consumerOffer = double.tryParse(txtConsumerOfferController.text) ?? 0;
+//   double exchange = double.tryParse(txtExchangAmtController.text) ?? 0;
+//   double discount = double.tryParse(txtAddDisController.text) ?? 0;
+
+//   double tcsPct = double.tryParse(tcsPctController.text) ?? 0;
+//   // Total Offers
+//   double totalOffers =corporateOffer +consumerOffer + exchange + discount;
+
+//   double onRoadWithoutOffers =
+//       exShowroom +
+//       insurance +
+//       rto +
+//       warranty +
+//       ewCcpAmount +
+//       accessories +
+//       fasTag +
+//       mcdParking + tcsPct
+//       ;
+//   double onRoad = onRoadWithoutOffers - totalOffers;
+//   double baseAmount = financeOn == "ExShowroom" ? exShowroom : onRoad;
+//   double loanAmount = baseAmount;
+//   if (percent != null && percent!.isNotEmpty) {
+//     String cleanPercent = percent!.replaceAll('%', '');
+//     double loanPer = double.tryParse(cleanPercent) ?? 100;
+//     loanAmount = (baseAmount * loanPer) / 100;
+//   }
+//   loanAmountController.text = loanAmount.toStringAsFixed(0);
+//   tcsPctController.text =tcsPct.toStringAsFixed(0);
+// }
+
 
 
 void calculateLoanAmount() {
+  double exShowroom = double.tryParse(exShowroomController.text) ?? 0;
+  double insurance = double.tryParse(txtInsAmtController.text) ?? 0;
+  double accessories = double.tryParse(txtMGAAmtController.text) ?? 0;
+  double rto = double.tryParse(txtRTOAmtController.text) ?? 0;
+  double warranty = double.tryParse(txtEWAmountController.text) ?? 0;
+  double ewCcpAmount = double.tryParse(txtCcpAmountController.text) ?? 0;
+  double fasTag = double.tryParse(FastagAmountController.text) ?? 0;
+  double mcdParking = double.tryParse(parkingChargeController.text) ?? 0;
 
-  double exShowroom = double.tryParse( exShowroomController.text, ) ?? 0;
-  double insurance = double.tryParse( txtInsAmtController.text, ) ?? 0;
-  double accessories = double.tryParse( txtMGAAmtController.text, ) ?? 0;
-  double rto = double.tryParse( txtRTOAmtController.text, ) ?? 0;
-  double warranty = double.tryParse( txtEWAmountController.text,  ) ?? 0;
-  double corporateOffer = double.tryParse( txtCorporateOfferController.text, ) ?? 0;
-  double consumerOffer = double.tryParse( txtConsumerOfferController.text, ) ?? 0;
-  double exchange = double.tryParse( exShowroomController.text, ) ??  0;
-  double discount = double.tryParse( txtAddDisController.text, ) ?? 0;
-  // ✅ ON ROAD
-  // double onRoad = exShowroom + insurance + accessories + rto + warranty;
-  double onRoad = corporateOffer + consumerOffer + exchange + discount;
-  double loanAmount = 0;
-  // ✅ FIRST TIME FULL PRICE
-  if (percent == null || percent!.isEmpty) 
-  {
-    if (financeOn == "ExShowroom") 
-    {
-      loanAmount = exShowroom;
-    }
-    else if (financeOn == "OnRoad") 
-    {
-      loanAmount = onRoad ;
-    }
-    else {
-      loanAmount = onRoad;
-    }
+  double corporateOffer =
+      double.tryParse(totalOfferController.text) ?? 0;
+
+  double consumerOffer =
+      double.tryParse(txtConsumerOfferController.text) ?? 0;
+
+  double exchange =
+      double.tryParse(txtExchangAmtController.text) ?? 0;
+
+  double discount =
+      double.tryParse(txtAddDisController.text) ?? 0;
+
+  // Total Offers
+  double totalOffers =
+      corporateOffer +
+      consumerOffer +
+      exchange +
+      discount;
+
+  // TCS
+  double tcsPct = calculateTCS(
+    exShowroom,
+    totalOffers,
+  );
+
+  // On Road Before Offers
+  double onRoadWithoutOffers =
+      exShowroom +
+      insurance +
+      rto +
+      warranty +
+      ewCcpAmount +
+      accessories +
+      fasTag +
+      mcdParking +
+      tcsPct;
+
+  // Final On Road
+  double onRoad = onRoadWithoutOffers - totalOffers;
+
+  // TCS Text
+  tcsPctController.text = tcsPct.toStringAsFixed(0);
+
+  // ==========================
+  // Finance Logic
+  // ==========================
+
+  // Cash
+  if (financeOn == "Cash") {
+    loanAmountController.text = "0";
+    return;
   }
 
-  // ✅ AFTER PERCENT APPLY
-  else {
-    double loanPer = double.tryParse(percent!) ?? 0;
-    if (financeOn == "ExShowroom") {
-      loanAmount = exShowroom * loanPer / 100;
+  // Manual
+  if (financeOn == "Manual") {
+    if (loanAmountController.text.isEmpty) {
+      loanAmountController.text = "0";
     }
-    else if (financeOn == "OnRoad") {
-      loanAmount = onRoad * loanPer / 100;
-    }
-    else {
-      loanAmount = onRoad * loanPer / 100;
-    }
+    return;
   }
-  loanAmountController.text = loanAmount.toStringAsFixed(0);
+
+  // ExShowroom / OnRoad
+  double baseAmount =
+      financeOn == "ExShowroom"
+          ? exShowroom
+          : onRoad;
+
+  double loanAmount = baseAmount;
+
+  if (percent != null && percent!.isNotEmpty) {
+    String cleanPercent = percent!.replaceAll('%', '');
+
+    double loanPer =
+        double.tryParse(cleanPercent) ?? 100;
+
+    loanAmount = (baseAmount * loanPer) / 100;
+  }
+
+  loanAmountController.text =
+      loanAmount.toStringAsFixed(0);
 }
+
+// void calculateLoanAmount() {
+
+//   double exShowroom = double.tryParse( exShowroomController.text, ) ?? 0;
+//   double insurance = double.tryParse( txtInsAmtController.text, ) ?? 0;
+//   double accessories = double.tryParse( txtMGAAmtController.text, ) ?? 0;
+//   double rto = double.tryParse( txtRTOAmtController.text, ) ?? 0;
+//   double warranty = double.tryParse( txtEWAmountController.text,  ) ?? 0;
+//   double ewCcpAmount = double.tryParse( txtCcpAmountController.text,  ) ?? 0;
+//   double fasTag = double.tryParse( FastagAmountController.text,  ) ?? 0;
+//   double mcdParking = double.tryParse( parkingChargeController.text,  ) ?? 0;
+//   double corporateOffer = double.tryParse( totalOfferController.text, ) ?? 0;
+//   double consumerOffer = double.tryParse( txtConsumerOfferController.text, ) ?? 0;
+//   double exchange = double.tryParse( exShowroomController.text, ) ??  0;
+//   double discount = double.tryParse( txtAddDisController.text, ) ?? 0;
+//   // ✅ ON ROAD
+//   // double onRoad = exShowroom + insurance + accessories + rto + warranty;
+//   // double onRoad = corporateOffer + consumerOffer + exchange + discount + ewCcpAmount;
+ 
+
+//  double  onRoadWithoutOffers =   
+//       exShowroom + 
+//       insurance + 
+//       rto+
+//       warranty + 
+//       ewCcpAmount + 
+//       accessories+
+//       fasTag +
+//       mcdParking;
+//   double  totalOffers = corporateOffer + consumerOffer + exchange + discount;
+
+//  double onRoad = onRoadWithoutOffers - totalOffers;
+
+//   double loanAmount = 0;
+//   // ✅ FIRST TIME FULL PRICE
+//   if (percent == null || percent!.isEmpty) 
+//   {
+//     if (financeOn == "ExShowroom") 
+//     {
+//       loanAmount = exShowroom;
+//     }
+//     else if (financeOn == "OnRoad") 
+//     {
+//       loanAmount = onRoad ;
+//     }
+//     else {
+//       loanAmount = onRoad ;
+//     }
+//   }
+
+//   // ✅ AFTER PERCENT APPLY
+//   else {
+//     double loanPer = double.tryParse(percent!) ?? 0;
+//     if (financeOn == "ExShowroom") {
+//       loanAmount = exShowroom ;
+//     }
+//     else if (financeOn == "OnRoad") {
+//       loanAmount = onRoad;
+//     }
+//     else {
+//       loanAmount = onRoad;
+//     }
+//   }
+//   loanAmountController.text = loanAmount.toStringAsFixed(0);
+// }
 
 
 
@@ -552,8 +830,7 @@ Future<String> generatePdfSave(
                   color: data.showroomType == 'Nexa'
                   ? PdfColors.black
                   : PdfColors.white,
-                padding:
-                    const pw.EdgeInsets.all(10),
+                padding: const pw.EdgeInsets.all(10),
 
                 child: pw.Column(
 
@@ -729,8 +1006,7 @@ Future<String> generatePdfSave(
                 child: pw.Row(
 
                   mainAxisAlignment:
-                      pw.MainAxisAlignment
-                          .spaceBetween,
+                      pw.MainAxisAlignment .spaceBetween,
 
                   children: [
 
@@ -744,8 +1020,8 @@ Future<String> generatePdfSave(
                     ),
 
                     pw.Text(
-                      "SRM (M.): (${data.srmPhone})",
-
+                       "SRM (M.): ${data.srmName} (${data.srmPhone})",
+                     
                       style: pw.TextStyle(
                         fontWeight:
                             pw.FontWeight.bold,
@@ -763,8 +1039,7 @@ Future<String> generatePdfSave(
 
                 child: pw.Padding(
 
-                  padding:
-                      const pw.EdgeInsets.all(5),
+                  padding: const pw.EdgeInsets.all(5),
 
                   child: pw.Text(
 
@@ -846,33 +1121,27 @@ Future<String> generatePdfSave(
                   ),
 
                   priceRow(
-                    "EW + CCP Platinum (2Yr.):",
-                    data.ewCcpAmount,
-                  ),
-
-                  priceRow(
-                    "MSGA:",
-                    data.mgaOrGna,
-                  ),
-
-                  priceRow(
-                    "Registration/TRC:",
+                    "RTO",
                     data.rtoAmount,
                   ),
 
                   priceRow(
-                    "FASTag:",
+                    "Accessories:",
+                    data.mgaOrGna,
+                  ),
+
+                  priceRow(
+                    "Ext.Warranty:",
+                    data.ewCcpAmount,
+                  ),
+
+                  priceRow(
+                    "CCP:",
+                    data.Ccp,
+                  ),
+                  priceRow(
+                    "FstTag:",
                     data.fasTag,
-                  ),
-
-                  priceRow(
-                    "HPN Charges:",
-                    data.hpnCharges,
-                  ),
-
-                  priceRow(
-                    "1% TCS:",
-                    data.tcsPct,
                   ),
 
                   priceRow(
@@ -880,6 +1149,12 @@ Future<String> generatePdfSave(
                     data.mcdParking,
                   ),
 
+                 if (data.exShowroom >= 1000000 &&
+                    !(data.customerFinancierType ?? '').contains('CSD'))
+                  priceRow('1% TCS:', data.tcsPct),
+                 
+
+                 
                   highlightRow(
                     "On Road Price Without Offers:",
                     data.onRoadWithoutOffers,
@@ -920,8 +1195,7 @@ Future<String> generatePdfSave(
 
                 child: pw.Padding(
 
-                  padding:
-                      const pw.EdgeInsets.all(5),
+                  padding: const pw.EdgeInsets.all(5),
 
                   child: pw.Text(
 
@@ -953,7 +1227,7 @@ Future<String> generatePdfSave(
 
                   buildRow(
                     "ROI: ${data.roi}%",
-                    "Tenure in Years: ${data.tenureYears}",
+                    "Tenure in Years: ${data.tenureYears}: Months",
                   ),
 
                   buildRow(
@@ -1358,7 +1632,7 @@ Future<void> sendWhatsApp(
       appBar: AppBar(
         backgroundColor: Colors.blue,
         title: Text(
-        "Welcome ! $userName - $userId",
+        "Welcome ! $userName, - $userId",
         style: const TextStyle(color: Colors.white),
       ),
         actions: [
@@ -1391,7 +1665,7 @@ Future<void> sendWhatsApp(
                 color: showroomType  == "Arena"
                     ? const Color(0xFFEFEBD8)
                     : showroomType  == "Nexa"
-                        ?const Color.fromARGB(255,10,22,40)
+                        ?const Color.fromARGB(255, 238, 243, 252)
                         : Colors.white,
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -1422,7 +1696,7 @@ Future<void> sendWhatsApp(
 
                     textField("Name", nameController, icon: Icons.person),
                     const SizedBox(height: 20),
-                    textField("PhoneNo", phoneController, icon: Icons.phone, isPhone: true),
+                    textField("Mobile", phoneController, icon: Icons.phone, isPhone: true),
                     const SizedBox(height: 20),
                     // textField("Email", emailController, icon: Icons.email, isEmail: true),
                     textField(
@@ -1431,73 +1705,489 @@ Future<void> sendWhatsApp(
                       icon: Icons.email,
                       isEmail: true,
                       isLowerCase: true,
+                      isRequired: false,
                     ),
                     const SizedBox(height: 20),
                     textField("City", cityController, icon: Icons.location_city),
                     const SizedBox(height: 20),
 
-                    dropdown(
-                      " Customer Type",
-                      customerType,
-                      ["Individual", "CSD"],
-                      (v) {
-                        setState(() {
-                          customerType = v;
-                        });
-                      },
-                    ),
-                          // dropdown(
-                          //   "Select Customer Type",
-                          //   customerType,
-                          //   ["Select Customer Type", "Individual", "CSD"],
-                          //   (v) {
-                          //     setState(() {
-                          //       customerType = v;
-                          //     });
-                          //   },
-                          // ),
+                    dropdown("Profession", profession, professionList,
+                          (v) => setState(() => profession = v)),
+                    const SizedBox(height: 20),
 
-                          const SizedBox(height: 20),
+                      dropdown(
+                        "Customer Type",
+                        customerType,
+                        ["Individual", "CSD"],
+                        (v) async {
+                          setState(() {
+                            customerType = v;
+                            model = null;
+                            modelList.clear();
+                          });
 
-                          dropdown(" Model", model, modelList, onModelChanged),
+                          final prefs = await SharedPreferences.getInstance();
+                          final locationCode = prefs.getString("locationCode") ?? "";
+
+                          final models = await apiService.getModelsByCustomerType(
+                            v!,
+                            locationCode,
+                          );
+
+                          setState(() {
+                            modelList = models;
+                          });
+                        },
+                      ),
+                    
+                      const SizedBox(height: 20),
+
+                      dropdown("Model with Fuel", model, modelList, onModelChanged),
                           
-                          const SizedBox(height: 20),
+                        const SizedBox(height: 20),
 
+                        dropdown(
+                          "Variant",
+                          selectedVariant,
+                          variantList,
+                          onVariantChanged,
+                        ),
+                        const SizedBox(height: 20),
+                        dropdown(
+                          "Variant Code",
+                          selectedVariantCode,
+                          variantCodeList,
+                          onVariantCodeChanged,
+                        ),
+                        const SizedBox(height: 20),
+
+                          // dropdown(
+                          //   "Colour",
+                          //   color,
+                          //   colorList,
+                          //   (v) => setState(() => color = v),
+                          // ),
                           dropdown(
-                            " Variant",
-                            selectedVariant,
-                            variantList,
-                            onVariantChanged,
-                          ),
-                          const SizedBox(height: 20),
-                          dropdown(
-                            " Code",
-                            selectedVariantCode,
-                            variantCodeList,
-                            onVariantCodeChanged,
-                          ),
-                          const SizedBox(height: 20),
-                          dropdown(
-                            " Colour",
+                            "Colour",
                             color,
                             colorList,
                             (v) => setState(() => color = v),
                           ),
 
+                          const SizedBox(height: 20),
 
-                      const SizedBox(height: 20),
+                          
+                          // textField("Ex Showroom", exShowroomController),
+                          textField(
+                            "Ex Showroom",
+                            exShowroomController,
+                            isNumeric: true,
+                            maxLength: 8,
+                            // enabled: isExshowroomEnabled,
+                          ),
+                        const SizedBox(height: 20),
+                        dropdown(
+                          "Insurance",
+                          insurance,
+                          [
+                            "FullPackage",
+                            "ZeroDept",
+                            "Commercial/Manual",
+                            "None"
+                          ],
+                        (v) async {
+                          setState(() {
+                            insurance = v;
+                            isInsuranceEnabled = v != "None";
+                          });
 
-                      
-                      textField("Ex Showroom", exShowroomController),
-                      const SizedBox(height: 20),
+                          final insuranceType = v; // 🔥 clear naming
+
+                          final prefs = await SharedPreferences.getInstance();
+                          final locationCode = prefs.getString("locationCode") ?? "";
+
+                          if (model == null) {
+                            print("Model missing");
+                            return;
+                          }
+
+                          try {
+                            final amount = await apiService.getInsuranceAmount(
+                              model!,
+                              locationCode,
+                              insuranceType ?? "None",
+                            );
+
+                            setState(() {
+                              txtInsAmtController.text = amount.toString();
+                            });
+
+                          } catch (e) {
+                            print("Insurance Error: $e");
+                          }
+                        }
+                        ),
+                  const SizedBox(height: 20),                 
+                    textField(
+                      "Insurance Amount",
+                      txtInsAmtController,
+                      enabled: isInsuranceEnabled,
+                      isNumeric: true,
+                      maxLength: 5,
+                    ),
 
 
-                      dropdown("Profession", profession, professionList,
-                          (v) => setState(() => profession = v)),
-                      const SizedBox(height: 20),
-                     
 
+
+                    const SizedBox(height: 20),
                     dropdown(
+                    "RTO",
+                    rto,
+                    [
+                      "Same State", 
+                      "Other State(Only NCR)",
+                      "Commercial/Manual",
+                      "TRC",
+                    ],
+                    (v) async {
+                      setState(() {
+                        rto = v;
+
+                        // Agar manual entry allow nahi karni hai
+                        // isRTOEnabled = false;
+                        isRTOEnabled = true;
+                      });
+
+                      final prefs = await SharedPreferences.getInstance();
+                      final locationCode = prefs.getString("locationCode") ?? "";
+
+                      if (model == null || model!.isEmpty) {
+                        print("Model missing");
+                        return;
+                      }
+
+                      if (v == null || v.isEmpty) {
+                        print("RTO type missing");
+                        return;
+                      }
+
+                      try {
+                        final amount = await apiService.getRTOAmout(
+                          model!,       // Model Group
+                          locationCode, // Location Code
+                          rto  ?? "None",           // Same State / Other State(Only NCR) / Commercial/Manual / TRC
+                        );
+
+                        setState(() {
+                          txtRTOAmtController.text = amount.toStringAsFixed(0);
+                        });
+
+                      } catch (e) {
+                        print("RTO Error: $e");
+
+                        setState(() {
+                          txtRTOAmtController.text = "0";
+                        });
+                      }
+                    },
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  textField(
+                    "RTO Amount",
+                    txtRTOAmtController,
+                    isNumeric: true,
+                    enabled: isRTOEnabled,
+                    maxLength: 5,
+                  ),
+                  
+                  const SizedBox(height: 20),
+
+                  dropdown(
+                    "Accessories",
+                    accessories,
+                    ["Basic", "Additional", "None"],
+                    (v) async {
+                      setState(() {
+                        accessories = v;
+
+                        // 🔥 LOGIC FIX
+                      isAccessoriesEnabled =
+                            (v == "Basic" || v == "Additional");
+                      });
+
+                      final prefs = await SharedPreferences.getInstance();
+                      final locationCode = prefs.getString("locationCode") ?? "";
+
+                      if (v == "Basic" && selectedVariantCode != null) {
+                        try {
+                          final amount = await apiService.getAccessoriesAmount(
+                            selectedVariantCode!,
+                            locationCode,
+                          );
+
+                          setState(() {
+                            txtMGAAmtController.text = amount.toString();
+                          });
+
+                        } catch (e) {
+                          print("Accessories Error: $e");
+                        }
+                      }
+
+                      else if (v == "Additional") {
+                        setState(() {
+                          txtMGAAmtController.text = "0";
+                        });
+                      }
+
+                      else {
+                        setState(() {
+                          txtMGAAmtController.text = "0";
+                        });
+                      }
+                    },
+                  ),
+
+                  const SizedBox(height: 20),                 
+                    textField(
+                    "Accessories Amount",
+                    txtMGAAmtController,
+                    isNumeric: true,
+                    enabled: isAccessoriesEnabled,
+                    maxLength: 5,
+                  ),
+                  
+
+
+                  const SizedBox(height: 20),
+                        dropdown(
+                  "Ext.Warranty",
+                  warranty,
+                  [
+                    "Extended Warranty Solitaire",
+                    "Extended Warranty Royal Platinum",
+                    "Extended Warranty Platinum",
+                    "None",
+                  ],
+                  (v) async {
+                    setState(() {
+                      warranty = v;
+                      isWarrantyEnabled = v != "None";
+                    });
+
+                    if (v == "None") {
+                      txtEWAmountController.text = "0";
+                      return;
+                    }
+
+                    try {
+                      final prefs = await SharedPreferences.getInstance();
+
+                      final locationCode =
+                          prefs.getString("locationCode") ?? "";
+
+                      if (model == null) {
+                        print("Model Missing");
+                        return;
+                      }
+
+                      final amount =
+                          await apiService.getExtWarrantyAmount(
+                        model!,
+                        locationCode,
+                        v!,
+                      );
+
+                      setState(() {
+                        txtEWAmountController.text =
+                            amount.toStringAsFixed(0);
+                      });
+
+                    } catch (e) {
+                      print("Extended Warranty Error: $e");
+                    }
+                  },
+                ),
+                const SizedBox(height: 20),                 
+                textField(
+                  "Ext.Warranty Amount",
+                  txtEWAmountController,
+                  enabled: isWarrantyEnabled,
+                  isNumeric: true,
+                  maxLength: 5,
+                ),
+
+                  const SizedBox(height: 20),     
+                  dropdown(
+                    "CCP",
+                    Ccp,
+                    [
+                      "CCP Royal Platinum",
+                      "CCP Platinum",
+                      "CCP Gold",
+                      "None"
+                    ],
+                    (v) async {
+                      setState(() {
+                        Ccp = v;
+                        isCcpEnabled = v != "None";
+                      });
+
+                      if (v == "None") {
+                        txtCcpAmountController.text = "0";
+                        return;
+                      }
+
+                      final prefs = await SharedPreferences.getInstance();
+                      final locationCode =
+                          prefs.getString("locationCode") ?? "";
+
+                      if (model == null) {
+                        print("Model missing");
+                        return;
+                      }
+
+                      try {
+                        final amount = await apiService.getCcpAmount(
+                          model!,
+                          locationCode,
+                          v!,
+                        );
+
+                        setState(() {
+                          txtCcpAmountController.text = amount.toStringAsFixed(0);
+                        });
+
+                      } catch (e) {
+                        print("CCP Error: $e");
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 20),     
+                  textField(
+                    "CCP Amount",
+                    txtCcpAmountController,
+                    enabled: isCcpEnabled,
+                    isNumeric: true,
+                    maxLength: 5,
+                  ),
+
+
+                  const SizedBox(height: 20),
+
+                      dropdown(
+                        "FasTag",
+                        FasTag,
+                        ["Yes", "No"],
+                        (v) async {
+                          setState(() {
+                            FasTag = v;
+                          });
+
+                          if (v == "Yes") {
+
+                            final prefs = await SharedPreferences.getInstance();
+                            final locationCode =
+                                prefs.getString("locationCode") ?? "";
+
+                            if (model == null) {
+                              print("Model missing");
+                              return;
+                            }
+
+                            try {
+                              final amount = await apiService.fastagAmount(
+                                model!,
+                                locationCode,
+                              );
+
+                              setState(() {
+                                FastagAmountController.text = amount.toStringAsFixed(0);
+                              });
+
+                            } catch (e) {
+                              print("Fastag Error: $e");
+                            }
+
+                          } else {
+                            setState(() {
+                              FastagAmountController.text = "0";
+
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 20),
+
+                      textField(
+                        "FasTag Amount",
+                        FastagAmountController,
+                        isNumeric: true,
+                        enabled: FasTag == "Yes",
+                        maxLength: 5,
+                      ),
+                  
+
+                   const SizedBox(height: 20),
+                      dropdown(
+                        "MCD Parking Charge (NCR Only)",
+                        parkingCharge,
+                        ["Yes", "No"],
+                        (v) async {
+                          setState(() {
+                            parkingCharge = v;
+                          });
+
+                          if (v == "Yes") {
+                            try {
+                              final prefs = await SharedPreferences.getInstance();
+
+                              final locationCode =
+                                  prefs.getString("locationCode") ?? "";
+
+                              if (model == null || model!.isEmpty) {
+                                print("Model not selected");
+                                return;
+                              }
+
+                              final amount = await apiService.parkingChargeAmount(
+                                model!,
+                                locationCode,
+                              );
+
+                              print("Parking Amount: $amount");
+
+                              setState(() {
+                                parkingChargeController.text =
+                                    amount.toStringAsFixed(0);
+                              });
+                            } catch (e) {
+                              print("Parking Charge Error: $e");
+
+                              setState(() {
+                                parkingChargeController.text = "0";
+                              });
+                            }
+                          } else {
+                            setState(() {
+                              parkingChargeController.text = "0";
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                                          textField(
+                        "MCD Parking Charge Amount",
+                        parkingChargeController,
+                        isNumeric: true,
+                        enabled: parkingCharge == "Yes",
+                        maxLength: 5,
+                      ),
+                  
+                  const SizedBox(height: 20),
+                          dropdown(
                       " Corporate",
                       corporateList.contains(corporate) ? corporate : null,
                       corporateList,
@@ -1542,284 +2232,159 @@ Future<void> sendWhatsApp(
                       }
                     },
                   ),
-                      
-                  
-                const SizedBox(height: 20),   
+                     const SizedBox(height: 20),    
                   TextField(
                   controller: totalOfferController,
-                  readOnly: true,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(5), 
+                  ],
                   decoration: const InputDecoration(
                     labelText: "Corporate Offer",
-                    prefixText: "₹ ",
+                    // prefixText: "₹ ",
+                    
                     border: OutlineInputBorder(),
+                    
                   ),
                 ),
-
-
-                       const SizedBox(height: 20),
-
-                      dropdown(
-                        "MCD Parking Charge(NCR Only)",
-                        parkingCharge,
-                        ["Select MCD Parking Charge(NCR Only)", "Yes", "No"],
-                        (v) {
-                          setState(() {
-                            parkingCharge = v;
-                          });
-                        },
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      dropdown(
-                        "Fastag",
-                        fastag,
-                        ["Select Fastag", "Yes", "No"],
-                        (v) {
-                          setState(() {
-                            fastag = v;
-                          });
-                        },
-                      ),
-
-
+               
                     const SizedBox(height: 20),
+
                     dropdown(
-                      "Insurance",
-                      insurance,
-                      ["Select Insurance", "FullPackage", "ZeroDept", "Commercial/Manual", "None"],
+                      "Consumer Offer",
+                      consumerOffer,
+                      [ "Yes", "No"],
                       (v) async {
                         setState(() {
-                          insurance = v;
-                          isInsuranceEnabled = v == "FullPackage"; // ✅ correct condition
+                          consumerOffer = v;
+                          isConsumerOfferEnabled = v == "Yes";
                         });
 
-                        // ✅ API call only for FullPackage
-                        if (v == "FullPackage" && selectedVariantCode != null) {
+                        if (v == "Yes" && model != null) {
                           try {
                             final prefs = await SharedPreferences.getInstance();
-                            final locationCode = prefs.getString("locationCode") ?? "";
+                            final locationCode =
+                                prefs.getString("locationCode") ?? "";
 
-                            final amount = await apiService.getInsuranceAmount(
-                              selectedVariantCode!, // model_with_Type
-                              locationCode,         // Location_Code
+                            final amount = await apiService.getConsumerOffer(
+                              model!,          // Model_Group
+                              locationCode,    // Location_Code
                             );
 
                             setState(() {
-                              txtInsAmtController.text = amount.toString(); // ✅ AUTO FILL
+                              txtConsumerOfferController.text =
+                                  amount.toStringAsFixed(0);
                             });
-
                           } catch (e) {
-                            print("Insurance Error: $e");
+                            print("Consumer Offer Error: $e");
                           }
                         } else {
-                          txtInsAmtController.clear();
+                          setState(() {
+                            txtConsumerOfferController.text = "0";
+                          });
                         }
                       },
-                    ),           
-                  const SizedBox(height: 20),                 
-                    textField(
-                      "Insurance Amt",
-                      txtInsAmtController,
-                      enabled: isInsuranceEnabled,
-                    ),
-
-
-                  const SizedBox(height: 20),
-                   dropdown(
-                      "Accessories",
-                      accessories,
-                      ["Select Accessories", "Basic", "Additional","None"],
-                      (v) async {
-                        setState(() {
-                          accessories = v;
-                          isAccessoriesEnabled = v == "Basic"; // ✅ correct condition
-                        });
-
-                        // ✅ API call only for FullPackage
-                        if (v == "Basic" && selectedVariantCode != null) {
-                          try {
-                            final prefs = await SharedPreferences.getInstance();
-                            final locationCode = prefs.getString("locationCode") ?? "";
-
-                            final amount = await apiService.getAccessoriesAmount(
-                              selectedVariantCode!, // model_with_Type
-                              locationCode,         // Location_Code
-                            );
-
-                            setState(() {
-                              txtMGAAmtController.text = amount.toString(); // ✅ AUTO FILL
-                            });
-
-                          } catch (e) {
-                            print("Accessories Error: $e");
-                          }
-                        } else {
-                          txtMGAAmtController.clear();
-                        }
-                      },
-                    ),           
-                  const SizedBox(height: 20),                 
-                    textField(
-                      "Accessories Amt",
-                      txtMGAAmtController,
-                      enabled: isAccessoriesEnabled,
                     ),
 
                     const SizedBox(height: 20),
+                    // textField("Consumer Offer Amt", txtConsumerOfferController, enabled: isConsumerOfferEnabled),
+                  textField(
+                    "Consumer Offer Amount",
+                    txtConsumerOfferController,
+                    enabled: isConsumerOfferEnabled,
+                    isNumeric: true,
+                  ),
+                   const SizedBox(height: 20),
+
+
+                    // dropdown(" Exchange", exchange, ["Select Exchange", "Yes", "No"], (v) {
+                    //   setState(() {
+                    //     exchange = v;
+                    //     isExchangeEnabled = v == "Yes";
+                    //     if (!isExchangeEnabled) {
+                    //       txtExchangAmtController.clear();
+                    //     }
+                    //   });
+                    // }),
+
                     dropdown(
-                      "RTO",
-                      rto,
-                      ["Select RTO", "Same State", "Other State(Only NCR)", "Commercial/Manual/TRC"],
-                      (v) {
-                        setState(() {
-                          rto = v;
-                        });
-
-                        if (selectedVariantCode == null) return;
-
-                        var data = allData.firstWhere(
-                          (e) => e.modelWithType == selectedVariantCode,
-                        );
-
-                        // 🔥 SAME STATE → RTO_Permanent
-                        if (v == "Same State") {
-                          setState(() {
-                            isRTOEnabled = false;
-                            txtRTOAmtController.text = data.rtOPermanent.toString();
-                          });
-                        }
-
-                        // 🔥 OTHER STATE → OtherStateRTO
-                        else if (v == "Other State(Only NCR)") {
-                          setState(() {
-                            isRTOEnabled = false;
-                            txtRTOAmtController.text = data.otherStateRTO.toString();
-                          });
-                        }
-
-                        // 🔥 COMMERCIAL → disable + clear
-                        else if (v == "Commercial/Manual/TRC") {
-                          setState(() {
-                            isRTOEnabled = false;
-                            txtRTOAmtController.text = "0";
-                          });
-                        }
-
-                        // 🔥 DEFAULT
-                        else {
-                          setState(() {
-                            isRTOEnabled = false;
-                            txtRTOAmtController.clear();
-                          });
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    textField(
-                      "RTO Amt",
-                      txtRTOAmtController,
-                      enabled: isRTOEnabled,
-                    ),
-
-                    const SizedBox(height: 20),
-                    dropdown(
-                      "Ext.Warranty",
-                      warranty,
-                      [
-                        "Select Ext.Warranty",
-                        "EW 6Yr With CCP 2Yr",
-                        "EW 6Yr Without CCP",
-                        "EW 5Yr With CCP 2Yr",
-                        "EW 5Yr Without CCP",
-                        "None"
-                      ],
-                      (v) async {
-
-                        setState(() {
-                          warranty = v;
-                        });
-
-                        if (selectedVariantCode == null) return;
-
-                        String ewType = "";
-                        String ccpType = "";
-
-                        // 👉 Mapping (AUTO — user doesn’t select this)
-                        switch (v) {
-                          case "EW 6Yr With CCP 2Yr": ewType = "EW_Platinum_4th_Year"; ccpType = "CCPPlatinum";
-                            break;
-                          case "EW 6Yr Without CCP": ewType = "EW_Platinum_4th_Year";
-                            break;
-                          case "EW 5Yr With CCP 2Yr": ewType = "EW_Royal_5th_Year"; ccpType = "CCPPlatinum";
-                            break;
-                          case "EW 5Yr Without CCP":  ewType = "EW_Royal_5th_Year";
-                            break;
-                          case "None": setState(() { isWarrantyEnabled = false; txtEWAmountController.text = "0"; });
-                            return;
-                          default: setState(() { isWarrantyEnabled = false; txtEWAmountController.clear(); });
-                            return;
-                        }
-                        // 🔥 CALL API (no manual ew/ccp input)
-                        final amount = await apiService.getWarrantyAmount(
-                          selectedVariantCode!,
-                          ewType,
-                          ccpType,
-                        );
-                        setState(() {
-                          isWarrantyEnabled = false;
-                          txtEWAmountController.text = amount.toString();
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    textField( "Warranty Amt", txtEWAmountController,  enabled: isWarrantyEnabled,),
-                    const SizedBox(height: 20),
-                    dropdown(" Consumer Offer", consumerOffer, ["Select Consumer Offer", "Yes", "No"], (v) {
-                      setState(() {
-                        consumerOffer = v;
-                        isConsumerOfferEnabled = v == "Yes";
-                        if (!isConsumerOfferEnabled) {
-                          txtConsumerOfferController.clear();
-                        }
-                      });
-                    }),
-                    const SizedBox(height: 20),
-                    textField("Consumer Offer Amt", txtConsumerOfferController, enabled: isConsumerOfferEnabled),
-                    const SizedBox(height: 20),
-                    dropdown(" Exchange", exchange, ["Select Exchange", "Yes", "No"], (v) {
+                    "Exchange",
+                    exchange,
+                    [ "Yes", "No"],
+                    (v) async {
                       setState(() {
                         exchange = v;
                         isExchangeEnabled = v == "Yes";
-                        if (!isExchangeEnabled) {
-                          txtExchangAmtController.clear();
-                        }
                       });
-                    }),
+
+                      if (v == "Yes" && model != null) {
+                        try {
+                          final prefs = await SharedPreferences.getInstance();
+                          final locationCode = prefs.getString("locationCode") ?? "";
+                          final amount = await apiService.getExchangeOffer(
+                            model!,        // Model_Group
+                            locationCode,  // Location_Code
+                          );
+
+                          setState(() {
+                            txtExchangAmtController.text =
+                                amount.toStringAsFixed(0);
+                          });
+                        } catch (e) {
+                          print("Exchange Offer Error: $e");
+                        }
+                      } else {
+                        setState(() {
+                          txtExchangAmtController.text = "0";
+                        });
+                      }
+                    },
+                    ),
+
                     const SizedBox(height: 20),
-                    textField("Exchange Amt", txtExchangAmtController,enabled: isExchangeEnabled),
+                    // textField("Exchange Amt", txtExchangAmtController,enabled: isExchangeEnabled),
+                    textField(
+                      "Exchange Amount",
+                      txtExchangAmtController,
+                      enabled: isExchangeEnabled,
+                      isNumeric: true,
+                    ),
+                    
                     const SizedBox(height: 20),
-                    dropdown(" Additional Discount", addDiscount, ["Select Additional Discount", "Yes", "No"], (v) {
+                    dropdown(" Additional Discount", addDiscount, ["Yes", "No"], (v) {
                       setState(() {
                         addDiscount = v;
                         isDiscountEnabled = v == "Yes";
                         if (!isDiscountEnabled) {
-                          txtAddDisController.clear();
+                          
+                          txtAddDisController.text = "0";
+
                         }
                       });
                     }),
                     const SizedBox(height: 20),
-                      textField(
-                        "Discount Amt",
-                        txtAddDisController,
-                         enabled: isDiscountEnabled,
-                      ),
+                    textField(
+                      "Discount Amount",
+                      txtAddDisController,
+                      enabled: isDiscountEnabled,
+                      isNumeric: true,
+                    ),
+
+
+
+
+                      // textField(
+                      //   "Discount Amt",
+                      //   txtAddDisController,
+                      //    enabled: isDiscountEnabled,
+                      // ),
                   // FINANCE SECTION
                   const SizedBox(height: 20),
                   const Text("EMI Calculator",
                       style: TextStyle(fontWeight: FontWeight.bold)),
 
-                  dropdown("Financier", financier,
+                  dropdown("Financier Type", financier,
                       ["Cash", "Finance"], (v) {
                     setState(() {
                       financier = v;
@@ -1827,6 +2392,7 @@ Future<void> sendWhatsApp(
                       if (!isFinance) clearFinanceFields();
                     });
                   }),
+
                   const SizedBox(height: 20),
                    dropdown(
                     "Bank",
@@ -1863,10 +2429,22 @@ Future<void> sendWhatsApp(
                     }
                   : null,
                 ),
-
-
-
+                
+                 const SizedBox(height: 20),
+                   TextFormField(
+                    controller: interestController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*\.?\d*$'),
+                      ),
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: "Rate of Interest",
+                    ),
+                  ),
                   // textField("Tenure", tenureController, enabled: isFinance),
+
                   const SizedBox(height: 20),
                   dropdown( "Finance On", financeOn, ["ExShowroom", "OnRoad", "Manual", "Cash"],
                     isFinance
@@ -1880,34 +2458,7 @@ Future<void> sendWhatsApp(
                           }
                         : null,
                   ),
-                  const SizedBox(height: 20),
-
-                  // textField("Rate of interest", interestController, enabled: isFinance),
-                  TextFormField(
-                    controller: interestController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*\.?\d*$'),
-                      ),
-                    ],
-                    decoration: const InputDecoration(
-                      labelText: "Rate of Interest",
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  TextFormField(
-                  controller: loanAmountController,
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) {
-                    calculateEMI();
-                  },
-                  decoration: const InputDecoration(
-                    labelText: "Loan Amount",
-                  ),
-                ),
+                 
                   // textField("Loan Amount", loanAmountController, enabled: isFinance),
                      // ✅ Loan %
                   const SizedBox(height: 20),
@@ -1921,6 +2472,18 @@ Future<void> sendWhatsApp(
                           }
                         : null,
                   ),
+
+                  const SizedBox(height: 20),
+                  TextFormField(
+                  controller: loanAmountController,
+                  keyboardType: TextInputType.number,
+                  onChanged: (value) {
+                    calculateEMI();
+                  },
+                  decoration: const InputDecoration(
+                    labelText: "Loan Amount",
+                  ),
+                ),
                   const SizedBox(height: 20),
 
                   // textField("EMI", emiController, enabled: isFinance),
@@ -1932,13 +2495,7 @@ Future<void> sendWhatsApp(
                       border: OutlineInputBorder(),
                     ),
                   ),
-
-
-
-
                   const SizedBox(height: 20),
-                 
-                 
                   Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center, 
@@ -1956,6 +2513,20 @@ Future<void> sendWhatsApp(
                         String locCode =  prefs.getString( "locationCode", ) ?? "";
                         final locationData = await apiService .getLocationByDmsCode( locCode,);
                         // CREATE DATA OBJECT
+                        double exShowroom = double.tryParse(exShowroomController.text) ?? 0;
+                        double totalOffers =
+                            (double.tryParse(totalOfferController.text) ?? 0) +
+                            (double.tryParse(txtConsumerOfferController.text) ?? 0) +
+                            (double.tryParse(txtExchangAmtController.text) ?? 0) +
+                            (double.tryParse(txtAddDisController.text) ?? 0);
+                        double tcsPct = calculateTCS(
+                          exShowroom,
+                          totalOffers,
+                        );
+                        print("ExShowroom = $exShowroom");
+                        print("TotalOffers = $totalOffers");
+                        print("TCS = $tcsPct");
+
                         final data = QuoteData(
                           showroomType: showroomType ?? 'Arena',
                           customerName: nameController.text.trim(),
@@ -1967,21 +2538,22 @@ Future<void> sendWhatsApp(
                           departmentName:department ?? '',
                           rmName: userName,
                           rmPhone: userId,
-                          srmName: '',
-                          srmPhone: '',
-                          quotationDate: DateTime.now().toString(),
+                          srmName: teamLeaderName,
+                          srmPhone: teamLeaderCont,
+                          quotationDate: DateFormat('yyyy-MM-dd').format(DateTime.now()),
                           modelWithFuel:model ?? '',
                           variant: selectedVariant ?? '',
                           color: color ?? '',
-                          customerFinancierType: 'Individual / ${financier ?? "Cash"}',
+                          customerFinancierType: '${customerType ?? "Customer"} / ${financier ?? "Cash"}',
                           exShowroom: double.tryParse(exShowroomController.text,) ?? 0,
                           insurance: double.tryParse( txtInsAmtController.text, ) ??0,
                           ewCcpAmount: double.tryParse( txtEWAmountController.text, ) ?? 0,
                           mgaOrGna: double.tryParse( txtMGAAmtController.text, ) ?? 0,
                           rtoAmount: double.tryParse( txtRTOAmtController.text, ) ?? 0,
-                          fasTag: fastag == 'Yes' ? 600  : 0,
-                          mcdParking:  parkingCharge == 'Yes' ? 2500 : 0,
-                          corporateOffer: double.tryParse( txtCorporateOfferController.text,) ?? 0,
+                          fasTag: double.tryParse(FastagAmountController.text) ?? 0,
+                          Ccp : double.tryParse(txtCcpAmountController.text) ?? 0,
+                          mcdParking: double.tryParse(parkingChargeController.text) ?? 0,
+                          corporateOffer: double.tryParse( totalOfferController.text,) ?? 0,
                           consumerOffer: double.tryParse( txtConsumerOfferController.text, ) ?? 0,
                           exchangeOffer: double.tryParse( txtExchangAmtController.text, ) ?? 0,
                           addnlDiscount: double.tryParse( txtAddDisController.text, ) ?? 0,
@@ -2001,13 +2573,15 @@ Future<void> sendWhatsApp(
                           ifscCode:locationData['ifscCode'] ?? '',
                           branchName: locationData['branchAddress'] ?? '',
                           hpnCharges: 0,
-                          tcsPct: 0,
+                          tcsPct: tcsPct,
                         );
 
                         // GENERATE PDF
                         String pdfPath =await generatePdfSave( data, custId, );
                         String pdfUrl = await uploadPdf( pdfPath, custId,);
-                       //String pdfUrl = "http://103.203.224.110/salesapi/uploads/PdfImage/3118.pdf";
+                      //  String pdfUrl = "http://103.203.224.110/salesapi/uploads/PdfImage/3118.pdf";
+                      //  String pdfUrl = "http://192.168.3.71/salesapi/uploads/PdfImage/3118.pdf";
+                        // String pdfUrl = "http://103.168.210.89/salesapi/uploads/PdfImage/3118.pdf";
                         // SEND WHATSAPP
                         await sendWhatsApp( pdfUrl, );
                         ScaffoldMessenger.of(context)
@@ -2032,9 +2606,26 @@ Future<void> sendWhatsApp(
                       );
                     }
                   },
-
                   child: const Text("Submit"),
                 ),
+
+const SizedBox(width: 10),
+
+ElevatedButton(
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.red,
+    padding: const EdgeInsets.symmetric(
+      horizontal: 20,
+      vertical: 12,
+    ),
+  ),
+  onPressed: resetForm,
+  child: const Text(
+    "Reset",
+    style: TextStyle(color: Colors.white),
+  ),
+),
+
 
                 const SizedBox(width: 10), // spacing
                   ElevatedButton(
@@ -2047,7 +2638,23 @@ Future<void> sendWhatsApp(
                         final prefs = await SharedPreferences.getInstance();
                         String locCode =prefs.getString("locationCode") ?? "";
                         final locationData =await apiService.getLocationByDmsCode(locCode);
+
                         final isNexa = showroomType == 'Nexa';
+
+                        double exShowroom = double.tryParse(exShowroomController.text) ?? 0;
+                        double totalOffers =
+                            (double.tryParse(totalOfferController.text) ?? 0) +
+                            (double.tryParse(txtConsumerOfferController.text) ?? 0) +
+                            (double.tryParse(txtExchangAmtController.text) ?? 0) +
+                            (double.tryParse(txtAddDisController.text) ?? 0);
+                        double tcsPct = calculateTCS(
+                          exShowroom,
+                          totalOffers,
+                        );
+                        print("ExShowroom = $exShowroom");
+                        print("TotalOffers = $totalOffers");
+                        print("TCS = $tcsPct");
+
                         final data = QuoteData(
                             customerName: nameController.text.trim(),
                             contactNo: phoneController.text.trim(),
@@ -2058,21 +2665,23 @@ Future<void> sendWhatsApp(
                             departmentName: department ?? '',
                             rmName: userName,
                             rmPhone: userId,
-                            srmName: '',
-                            srmPhone: '',
-                            quotationDate: DateTime.now().toString(),
+                            srmName: teamLeaderName,
+                            srmPhone: teamLeaderCont,
+                            quotationDate: DateFormat('yyyy-MM-dd').format(DateTime.now()),
                             modelWithFuel: model ?? '',
                             variant: selectedVariant ?? '',
                             color: color ?? '',
-                            customerFinancierType: 'Individual / ${financier ?? "Cash"}',
+                            // customerFinancierType: 'Individual / ${financier ?? "Cash"}',
+                             customerFinancierType: '${customerType ?? "Customer"} / ${financier ?? "Cash"}',
                             exShowroom: double.tryParse(exShowroomController.text) ?? 0,
                             insurance: double.tryParse(txtInsAmtController.text) ?? 0,
                             ewCcpAmount: double.tryParse(txtEWAmountController.text) ?? 0,
+                            Ccp: double.tryParse(txtCcpAmountController.text) ?? 0,
                             mgaOrGna: double.tryParse(txtMGAAmtController.text) ?? 0,
                             rtoAmount: double.tryParse(txtRTOAmtController.text) ?? 0,
-                            fasTag: fastag == 'Yes' ? 600 : 0,
-                            mcdParking: parkingCharge == 'Yes' ? 2500 : 0,
-                            corporateOffer: double.tryParse(txtCorporateOfferController.text) ?? 0,
+                            fasTag: double.tryParse(FastagAmountController.text) ?? 0,
+                            mcdParking: double.tryParse(parkingChargeController.text) ?? 0,
+                            corporateOffer: double.tryParse(totalOfferController.text) ?? 0,
                             consumerOffer: double.tryParse(txtConsumerOfferController.text) ?? 0,
                             exchangeOffer: double.tryParse(txtExchangAmtController.text) ?? 0,
                             addnlDiscount: double.tryParse(txtAddDisController.text) ?? 0,
@@ -2093,18 +2702,27 @@ Future<void> sendWhatsApp(
                             ifscCode:locationData['ifscCode'] ?? '',        
                             branchName: locationData['branchAddress'] ?? '',
                             hpnCharges: 0,   
-                            tcsPct: 0, 
+                            tcsPct: tcsPct,
                               );
                           await generatePdf(data);
                         }
                       },
-                      child: Text("Preview $showroomType"),
+                      // child: Text("Preview $showroomType"),
+                      child: Text("Preview"),
                       
                     ),
                   ],
+
+                  
                 )
 
+
+
+
+
+
                 ],
+                
               ),
             ),
           ),
