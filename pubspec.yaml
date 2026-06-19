@@ -5,6 +5,7 @@ name: pmpl_salesquote
 
 description: Sales Quote Management App for Arena & Nexa Dealerships
 
+
 publish_to: 'none'
 
 
@@ -82,7 +83,7 @@ flutter_native_splash:
 flutter_launcher_icons:
 
   android: true
-  ios: true
+  ios: trues
 
   image_path: "assets/images/logo.png"
 
