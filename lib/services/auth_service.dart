@@ -1,26 +1,16 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-<<<<<<< HEAD
 import 'package:pmpl_salesquote/models/price_model.dart';
-=======
-import 'package:sales_quote_arnexa/models/price_model.dart';
->>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
 import 'package:shared_preferences/shared_preferences.dart';
 class AuthService {
   // 🔥 Use this for real device. For emulator keep 10.0.2.2
   // static const String baseUrl = "http://10.0.2.2:5247";
-<<<<<<< HEAD
   //  static const String baseUrl = "http://localhost:5247";
   //  static const String baseUrl = "http://103.203.224.110";
   //  static const String baseUrl = "http://103.203.224.110/salesapi";
   //  static const String baseUrl = "http://192.168.3.71/salesapi";
    static const String baseUrl = "http://103.168.210.89/salesapi";
-=======
-  static const String baseUrl = "http://localhost:5247";
-  //  static const String baseUrl = "http://103.203.224.110";
-  //  static const String baseUrl = "http://103.203.224.110/salesapi";
->>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
 
 
 // ── Stored session ─────────────────────────────────────────
@@ -32,10 +22,7 @@ class AuthService {
   static String? _username;
   static String? _pass;
   static String? _Loc_Code;
-<<<<<<< HEAD
-=======
 
->>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
   
   Future<Map<String, dynamic>?> login(
   String userId,
@@ -52,11 +39,8 @@ class AuthService {
       "userId": userId,
       "Pass": Pass,
       "showroomType": showroomType,
-<<<<<<< HEAD
       // "TeamLeaderName": TeamLeaderName,
       // "TeamLeaderCont": TeamLeaderCont,
-=======
->>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
     }),
   );
 
@@ -128,7 +112,6 @@ Future<List<String>> GetCorporateByScheme(String scheme) async {
 }
 
 
-<<<<<<< HEAD
 Future<double> parkingChargeAmount(
   String model,
   String locationCode,
@@ -176,8 +159,6 @@ Future<double> fastagAmount(
   return 0;
 }
 
-=======
->>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
 
 Future<double> getTotalOffer(String model, String corporateName) async {
   final url =
@@ -197,7 +178,6 @@ Future<double> getTotalOffer(String model, String corporateName) async {
   }
 }
 
-<<<<<<< HEAD
 Future<double> getCcpAmount(
   String modelWithType,
   String location,
@@ -208,16 +188,6 @@ Future<double> getCcpAmount(
       "?modelWithType=${Uri.encodeComponent(modelWithType)}"
       "&location=${Uri.encodeComponent(location)}"
       "&Ccp=${Uri.encodeComponent(ccpType)}";
-=======
-
-Future<double> getInsuranceAmount(String modelWithType, String location) async {
-
-  if (modelWithType.isEmpty || location.isEmpty) {
-    throw Exception("Invalid params: model or location empty");
-  }
-
-  final url = "$baseUrl/api/pricelist/insurance?modelWithType=${Uri.encodeComponent(modelWithType)}&location=${Uri.encodeComponent(location)}";
->>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
 
   print("URL: $url");
 
@@ -228,7 +198,6 @@ Future<double> getInsuranceAmount(String modelWithType, String location) async {
 
   if (response.statusCode == 200) {
     return double.tryParse(response.body) ?? 0;
-<<<<<<< HEAD
   }
 
   throw Exception("Failed to load CCP Amount");
@@ -283,14 +252,11 @@ Future<double> getInsuranceAmount(
 
   if (response.statusCode == 200) {
     return double.tryParse(response.body.toString()) ?? 0;
-=======
->>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
   } else {
     throw Exception("Failed to load insurance");
   }
 }
 
-<<<<<<< HEAD
 Future<double> getRTOAmout(
   String modelWithType,
   String location,
@@ -321,8 +287,6 @@ Future<double> getRTOAmout(
 }
 
 
-=======
->>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
 Future<double> getAccessoriesAmount(String modelWithType, String location) async {
 
   if (modelWithType.isEmpty || location.isEmpty) {
@@ -348,10 +312,7 @@ Future<double> getAccessoriesAmount(String modelWithType, String location) async
 
 Future<List<PriceModel>> getAllData() async {
   final prefs = await SharedPreferences.getInstance();
-<<<<<<< HEAD
   
-=======
->>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
 
   // 🔥 Yaha se loc_Code mil raha hai
   final locationCode = prefs.getString("locationCode") ?? "";
@@ -489,11 +450,7 @@ Future<String?> uploadPdf(
       await http.MultipartFile.fromPath(
         'file',
         filePath,
-<<<<<<< HEAD
         filename: fileName, 
-=======
-        filename: fileName,
->>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
       ),
     );
 
@@ -512,12 +469,7 @@ Future<String?> uploadPdf(
 
       if (responseData.isNotEmpty) {
 
-<<<<<<< HEAD
         final json = jsonDecode(responseData);
-=======
-        final json =
-            jsonDecode(responseData);
->>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
 
         return json["url"];
       }
@@ -533,7 +485,6 @@ Future<String?> uploadPdf(
   }
 }
 
-<<<<<<< HEAD
 
 Future<double> getConsumerOffer(
   String modelGroup,
@@ -617,12 +568,6 @@ Future<double> getWarrantyAmount(
   String model,
   String ewType,
   String ccpType, 
-=======
-Future<double> getWarrantyAmount(
-  String model,
-  String ewType,
-  String ccpType,
->>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
 ) async {
    
   final prefs = await SharedPreferences.getInstance();
@@ -646,11 +591,8 @@ Future<double> getWarrantyAmount(
   } else {
     throw Exception("Failed to load warranty");
   }
-<<<<<<< HEAD
 
 
   
-=======
->>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
 }
 }
