@@ -22,7 +22,6 @@ class AuthService {
   static String? _username;
   static String? _pass;
   static String? _Loc_Code;
-
   
   Future<Map<String, dynamic>?> login(
   String userId,
@@ -487,29 +486,57 @@ Future<String?> uploadPdf(
 
 
 Future<double> getConsumerOffer(
-    String modelGroup,
-    String locationCode,
-) async {
-  final response = await http.get(
-    Uri.parse(
-      '$baseUrl/api/PriceList/GetConsumerOffer?modelGroup=$modelGroup&locationCode=$locationCode',
-    ),
-  );
-  if (response.statusCode == 200) {
-    return double.tryParse(response.body) ?? 0;
-  }
-  return 0;
-}
-
-
-Future<double> getExchangeOffer(
   String modelGroup,
+  String offerType,
   String locationCode,
 ) async {
   final response = await http.get(
     Uri.parse(
-      '$baseUrl/api/PriceList/GetExchangeOffer?modelGroup=$modelGroup&locationCode=$locationCode',
+      '$baseUrl/api/PriceList/GetConsumerOffer'
+      '?modelGroup=$modelGroup'
+      '&offerType=$offerType'
+      '&locationCode=$locationCode',
     ),
+  );
+
+  if (response.statusCode == 200) {
+    return double.tryParse(response.body) ?? 0;
+  }
+
+  return 0;
+}
+// Future<double> getConsumerOffer(
+//     String modelGroup,
+     
+//     String locationCode,
+// ) async {
+//   final response = await http.get(
+//     Uri.parse(
+//       '$baseUrl/api/PriceList/GetConsumerOffer?modelGroup=$modelGroup&locationCode=$locationCode',
+//     ),
+//   );
+//   if (response.statusCode == 200) {
+//     return double.tryParse(response.body) ?? 0;
+//   }
+//   return 0;
+// }
+
+
+Future<double> getExchangeOffer(
+  String modelGroup,
+  String offerType,
+  String locationCode,
+) async {
+  final response = await http.get(
+    Uri.parse(
+      '$baseUrl/api/PriceList/GetExchangeOffer'
+      '?modelGroup=$modelGroup'
+      '&offerType=$offerType'
+      '&locationCode=$locationCode',
+    ),
+    // Uri.parse(
+    //   '$baseUrl/api/PriceList/GetExchangeOffer?modelGroup=$modelGroup&locationCode=$locationCode',
+    // ),
   );
 
   if (response.statusCode == 200) {

@@ -2264,17 +2264,22 @@ Future<void> sendWhatsApp(
                         if (v == "Yes" && model != null) {
                           try {
                             final prefs = await SharedPreferences.getInstance();
-                            final locationCode =
-                                prefs.getString("locationCode") ?? "";
-
+                            final locationCode = prefs.getString("locationCode") ?? "";
+                            final offerType = "Consumer";
                             final amount = await apiService.getConsumerOffer(
-                              model!,          // Model_Group
-                              locationCode,    // Location_Code
-                            );
+                                model!,
+                                offerType,
+                                locationCode,
+                              );
+
+                            // final amount = await apiService.getConsumerOffer(
+                            //   model!,
+                            //   offerType          // Model_Group
+                            //   locationCode,    // Location_Code
+                            // );
 
                             setState(() {
-                              txtConsumerOfferController.text =
-                                  amount.toStringAsFixed(0);
+                              txtConsumerOfferController.text = amount.toStringAsFixed(0);
                             });
                           } catch (e) {
                             print("Consumer Offer Error: $e");
@@ -2297,17 +2302,6 @@ Future<void> sendWhatsApp(
                   ),
                    const SizedBox(height: 20),
 
-
-                    // dropdown(" Exchange", exchange, ["Select Exchange", "Yes", "No"], (v) {
-                    //   setState(() {
-                    //     exchange = v;
-                    //     isExchangeEnabled = v == "Yes";
-                    //     if (!isExchangeEnabled) {
-                    //       txtExchangAmtController.clear();
-                    //     }
-                    //   });
-                    // }),
-
                     dropdown(
                     "Exchange",
                     exchange,
@@ -2322,10 +2316,13 @@ Future<void> sendWhatsApp(
                         try {
                           final prefs = await SharedPreferences.getInstance();
                           final locationCode = prefs.getString("locationCode") ?? "";
+                          final offerType = "Exchange";
                           final amount = await apiService.getExchangeOffer(
-                            model!,        // Model_Group
-                            locationCode,  // Location_Code
-                          );
+                                model!,
+                                offerType,
+                                locationCode,
+                              );
+                         
 
                           setState(() {
                             txtExchangAmtController.text =
@@ -2371,14 +2368,6 @@ Future<void> sendWhatsApp(
                       isNumeric: true,
                     ),
 
-
-
-
-                      // textField(
-                      //   "Discount Amt",
-                      //   txtAddDisController,
-                      //    enabled: isDiscountEnabled,
-                      // ),
                   // FINANCE SECTION
                   const SizedBox(height: 20),
                   const Text("EMI Calculator",
