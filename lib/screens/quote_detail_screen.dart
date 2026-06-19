@@ -1,15 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-<<<<<<< HEAD
 import 'package:pmpl_salesquote/theme/app_theme.dart';
 import 'package:pmpl_salesquote/models/models.dart';
 import 'package:pmpl_salesquote/services/api_service.dart';
-=======
-import 'package:sales_quote_arnexa/theme/app_theme.dart';
-import 'package:sales_quote_arnexa/models/models.dart';
-import 'package:sales_quote_arnexa/services/api_service.dart';
->>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
 
 class QuoteDetailScreen extends StatefulWidget {
   final int quoteId;

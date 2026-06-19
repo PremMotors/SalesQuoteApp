@@ -6,11 +6,7 @@ import 'quotes_screen.dart';
 import 'new_quote_screen.dart';
 import 'screens/customers_screen.dart';
 import 'profile_screen.dart';
-<<<<<<< HEAD
 import 'package:pmpl_salesquote/main_shell.dart';
-=======
-import 'package:sales_quote_arnexa/main_shell.dart';
->>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
 export '../models/models.dart';
 
 class MainShell extends StatefulWidget {

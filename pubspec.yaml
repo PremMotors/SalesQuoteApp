@@ -1,18 +1,15 @@
-<<<<<<< HEAD
+
 name: pmpl_salesquote 
-=======
-name: sales_quote_arnexa
->>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
+
+
 
 description: Sales Quote Management App for Arena & Nexa Dealerships
 
 publish_to: 'none'
 
-<<<<<<< HEAD
+
+
 version: 1.0.0+24
-=======
-version: 1.0.0+16
->>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
