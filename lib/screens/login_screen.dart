@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+<<<<<<< HEAD
 import 'package:pmpl_salesquote/theme/app_theme.dart';
 import 'package:pmpl_salesquote/main_shell.dart';
 import 'package:pmpl_salesquote/services/auth_service.dart';
 import 'package:pmpl_salesquote/screens/customer_quote_screen.dart';
+=======
+import 'package:sales_quote_arnexa/theme/app_theme.dart';
+import 'package:sales_quote_arnexa/main_shell.dart';
+import 'package:sales_quote_arnexa/services/auth_service.dart';
+import 'package:sales_quote_arnexa/screens/customer_quote_screen.dart';
+>>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
 import 'package:shared_preferences/shared_preferences.dart';
 // import 'package:http/http.dart' as http;
 // import 'dart:convert';
@@ -92,8 +99,11 @@ Future<void> _login() async {
       await prefs.setString("role", data['role'] ?? "");
       await prefs.setString("locationCode", data['loc_Code'] ?? "");
       await prefs.setString("showroomType", data['showroomType'] ?? "");
+<<<<<<< HEAD
       await prefs.setString("teamLeaderName", data['teamLeaderName'] ?? "");
       await prefs.setString("teamLeaderCont", data['teamLeaderCont'] ?? "");
+=======
+>>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
 
       setState(() {
         _loading = false;
@@ -104,8 +114,11 @@ Future<void> _login() async {
         MaterialPageRoute(
           builder: (_) => CustomerQuoteScreen(
             userName: data['username'] ?? "",
+<<<<<<< HEAD
             teamLeaderName: data['teamLeaderName'] ?? "",
             teamLeaderCont: data['teamLeaderCont'] ?? "",
+=======
+>>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
           ),
         ),
       );

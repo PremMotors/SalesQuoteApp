@@ -1,3 +1,10 @@
+<<<<<<< HEAD
+=======
+// Production-grade pdf_screen.dart
+// Matches Arena and Nexa quotation preview layouts based on showroomType
+// Replace your existing file with this implementation.
+
+>>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
@@ -27,9 +34,14 @@ class QuoteData {
   final double ewCcpAmount;
   final double mgaOrGna;
   final double rtoAmount;
+<<<<<<< HEAD
   final double hpnCharges;
   final double fasTag;
   final double Ccp;
+=======
+  final double fasTag;
+  final double hpnCharges;
+>>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
   final double tcsPct;
   final double mcdParking;
   final double corporateOffer;
@@ -76,7 +88,10 @@ class QuoteData {
     required this.mgaOrGna,
     required this.rtoAmount,
     required this.fasTag,
+<<<<<<< HEAD
     required this.Ccp,
+=======
+>>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
     required this.hpnCharges,
     required this.tcsPct,
     required this.mcdParking,
@@ -101,6 +116,7 @@ class QuoteData {
     required this.branchName,
   });
 
+<<<<<<< HEAD
   double get onRoadWithoutOffers => 
       exShowroom + 
       insurance + 
@@ -113,6 +129,21 @@ class QuoteData {
       tcsPct ;
 
   double get totalOffers => corporateOffer + consumerOffer + exchangeOffer + addnlDiscount;
+=======
+  double get onRoadWithoutOffers =>
+      exShowroom +
+      insurance +
+      ewCcpAmount +
+      mgaOrGna +
+      rtoAmount +
+      fasTag +
+      hpnCharges +
+      tcsPct +
+      mcdParking;
+
+  double get totalOffers =>
+      corporateOffer + consumerOffer + exchangeOffer + addnlDiscount;
+>>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
 
   double get onRoadAfterOffers => onRoadWithoutOffers - totalOffers;
 }
@@ -150,7 +181,11 @@ pw.Widget _buildArenaPage(
       _arenaHeader(d, logo),
       _customerSection(d, yellow, isNexa: false),
       _vehicleSection(d),
+<<<<<<< HEAD
       _priceSection(d, yellow, labelMga: 'Accessories'),
+=======
+      _priceSection(d, yellow, labelMga: 'MSGA'),
+>>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
       _emiSection(d),
       _termsSection(),
       _bankSection(d),
@@ -280,6 +315,7 @@ pw.Widget _priceSection(QuoteData d, PdfColor highlight,
             style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
     pw.Table(
       border: pw.TableBorder.all(),
+<<<<<<< HEAD
        children: [
             _priceRow('Ex-Showroom Price:', d.exShowroom),
             _priceRow('Insurance:', d.insurance),
@@ -337,10 +373,32 @@ pw.Widget _priceSection(QuoteData d, PdfColor highlight,
       //   _highlightPriceRow('On Road Price After Applicable Offers:',
       //       d.onRoadAfterOffers, highlight),
       // ],
+=======
+      children: [
+        _priceRow('Ex-Showroom Price:', d.exShowroom),
+        _priceRow('Insurance:', d.insurance),
+        _priceRow('EW + CCP Platinum (2Yr.):', d.ewCcpAmount),
+        _priceRow('$labelMga:', d.mgaOrGna),
+        _priceRow('Registration/TRC:', d.rtoAmount),
+        _priceRow('FASTag:', d.fasTag),
+        _priceRow('HPN Charges:', d.hpnCharges),
+        _priceRow('1% TCS:', d.tcsPct),
+        _priceRow('MCD Parking:', d.mcdParking),
+        _highlightPriceRow(
+            'On Road Price Without Offers:', d.onRoadWithoutOffers, highlight),
+        _priceRow('Corporate Offer:', d.corporateOffer),
+        _priceRow('Consumer Offer:', d.consumerOffer),
+        _priceRow('Exchange Offer:', d.exchangeOffer),
+        _priceRow('Addnl. Discount:', d.addnlDiscount),
+        _highlightPriceRow('On Road Price After Applicable Offers:',
+            d.onRoadAfterOffers, highlight),
+      ],
+>>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
     ),
   ]);
 }
 
+<<<<<<< HEAD
 pw.Widget _emiSection(QuoteData d) {
   if (d.financeOn == "Cash") {
     return pw.SizedBox(); // Widget hide
@@ -379,6 +437,19 @@ pw.Widget _emiSection(QuoteData d) {
 //             '* ROI Will Subject to change as per CIBIL score.'),
 //       ])
 //     ]);
+=======
+pw.Widget _emiSection(QuoteData d) => pw.Column(children: [
+      pw.Center(
+          child: pw.Text('EMI Details',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+      pw.Table(border: pw.TableBorder.all(), children: [
+        _row('Finance On: ${d.financeOn}', 'Loan Amount: ${d.loanAmount}'),
+        _row('ROI: ${d.roi}%', 'Tenure in Years: ${d.tenureYears}'),
+        _row('EMI Amount: ${d.emiAmount}',
+            '* ROI Will Subject to change as per CIBIL score.'),
+      ])
+    ]);
+>>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
 
 pw.Widget _termsSection() => pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,

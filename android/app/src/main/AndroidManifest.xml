@@ -1,7 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 <uses-permission android:name="android.permission.INTERNET" />
     <application
+<<<<<<< HEAD
         android:label="PMPL Sales Quote"
+=======
+        android:label="sales_quote_arnexa"
+>>>>>>> 3c3e8268674e7fa0c9a0abfba205afc34835c983
         android:name="${applicationName}"
         android:usesCleartextTraffic="true"
         android:icon="@mipmap/ic_launcher">
