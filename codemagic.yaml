@@ -2,6 +2,9 @@ workflows:
   ios-release:
     name: iOS Release
 
+integrations:
+      app_store_connect: PMSalesQuote
+      
     environment:
       flutter: stable
       xcode: latest
