@@ -8,9 +8,10 @@ workflows:
     environment:
       flutter: stable
       xcode: latest
-      # 1. MOVED HERE: This is where code signing must be declared
       ios_signing:
         distribution_type: app_store
+        # Fixed: Added the required bundle identifier field here
+        bundle_identifier: com.premmotors.salesquote
 
     scripts:
       - name: Get Flutter packages
@@ -24,5 +25,4 @@ workflows:
 
     publishing:
       app_store_connect:
-        # 2. FIXED: Removed the extra code_signing fields from here
         auth: integration
