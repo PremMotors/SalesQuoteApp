@@ -16,8 +16,8 @@ workflows:
       - name: Get Flutter packages
         script: flutter pub get
 
-      # Fix: Forcing manual signing configuration inside the remote Mac instance
-      - name: Disable Xcode Automatic Code Signing
+      # Crucial for Windows Users: Removes automated local signing requirements
+      - name: Set Manual Code Signing
         script: |
           sed -i '' 's/ProvisioningStyle = Automatic;/ProvisioningStyle = Manual;/g' ios/Runner.xcodeproj/project.pbxproj
           sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' ios/Runner.xcodeproj/project.pbxproj
