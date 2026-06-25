@@ -2,7 +2,6 @@ workflows:
   ios-release:
     name: iOS Release
 
-    # Fixed: Indented with 4 spaces to align under ios-release
     integrations:
       app_store_connect: PMSalesQuote
       
@@ -15,7 +14,8 @@ workflows:
         script: flutter pub get
 
       - name: Build iOS IPA
-        script: flutter build ipa --release --no-codesign
+        # Changed: Removed --no-codesign so it creates the final signed package
+        script: flutter build ipa --release
 
     artifacts:
       - build/ios/ipa/*.ipa
@@ -23,3 +23,6 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
+        # Added: This forces Codemagic to auto-sign the build during the compile step
+        code_signing:
+          distribution_type: app_store
