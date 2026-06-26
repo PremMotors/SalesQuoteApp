@@ -14,12 +14,25 @@ workflows:
         bundle_identifier: com.premmotors.salesquote
 
     scripts:
-      - flutter pub get
-      - find . -name "Podfile" -execdir pod install \;
-      - xcode-project use-profiles
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+
+      - name: Install Pods
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+
+      - name: Configure Code Signing
+        script: |
+          xcode-project use-profiles
+
       - name: Build IPA
-  script: |
-    flutter build ipa --release --export-method app-store --build-name=1.0.0 --build-number=$PROJECT_BUILD_NUMBER
+        script: |
+          flutter build ipa \
+            --release \
+            --export-method app-store \
+            --build-name=1.0.0 \
+            --build-number=$PROJECT_BUILD_NUMBER
 
     publishing:
       app_store_connect:
