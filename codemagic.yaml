@@ -1,34 +1,49 @@
 workflows:
   ios-release:
     name: iOS Release
+    max_build_duration: 60
+    instance_type: mac_mini_m2
 
     integrations:
       app_store_connect: PMSalesQuote
-      
+
     environment:
       flutter: stable
       xcode: latest
+      cocoapods: default
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.premmotors.salesquote
+      vars:
+        BUNDLE_ID: "com.premmotors.salesquote"
+        APP_STORE_APPLE_ID: 6782559398
 
     scripts:
       - name: Get Flutter packages
-        script: flutter pub get
-
-      # Fix for Windows Users: Overriding the hidden internal Bundle ID variable
-      - name: Force Code Signing Configuration
         script: |
-          sed -i '' 's/ProvisioningStyle = Automatic;/ProvisioningStyle = Manual;/g' ios/Runner.xcodeproj/project.pbxproj
-          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' ios/Runner.xcodeproj/project.pbxproj
-          find ios/Runner.xcodeproj/project.pbxproj -type f -exec sed -i '' 's/PRODUCT_BUNDLE_IDENTIFIER = .*/PRODUCT_BUNDLE_IDENTIFIER = com.premmotors.salesquote;/g' {} +
+          flutter packages pub get
 
-      - name: Build iOS IPA
-        script: flutter build ipa --release
+      - name: Install CocoaPods dependencies
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+
+      - name: Flutter build IPA
+        script: |
+          flutter build ipa --release \
+            --build-name=1.0.0 \
+            --build-number=$PROJECT_BUILD_NUMBER \
+            --export-options-plist=/Users/builder/export_options.plist
 
     artifacts:
       - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
 
     publishing:
       app_store_connect:
         auth: integration
+        submit_to_testflight: true
