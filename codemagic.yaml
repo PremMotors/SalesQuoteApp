@@ -3,11 +3,11 @@ workflows:
     name: iOS Release
     max_build_duration: 60
     instance_type: mac_mini_m2
-
     integrations:
       app_store_connect: PMSalesQuote
-
     environment:
+      groups:
+        - code_signing          # <-- YE NAYI LINE (CERTIFICATE_PRIVATE_KEY isme hai)
       flutter: stable
       xcode: latest
       cocoapods: default
@@ -17,32 +17,26 @@ workflows:
       vars:
         BUNDLE_ID: "com.premmotors.salesquote"
         APP_STORE_APPLE_ID: 6782559398
-
     scripts:
       - name: Get Flutter packages
         script: |
           flutter packages pub get
-
       - name: Install CocoaPods dependencies
         script: |
           find . -name "Podfile" -execdir pod install \;
-
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles
-
       - name: Flutter build IPA
         script: |
           flutter build ipa --release \
             --build-name=1.0.0 \
             --build-number=$PROJECT_BUILD_NUMBER \
             --export-options-plist=/Users/builder/export_options.plist
-
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
       - flutter_drive.log
-
     publishing:
       app_store_connect:
         auth: integration
