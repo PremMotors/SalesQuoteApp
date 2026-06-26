@@ -17,7 +17,9 @@ workflows:
       - flutter pub get
       - find . -name "Podfile" -execdir pod install \;
       - xcode-project use-profiles
-      - flutter build ipa --release
+      - name: Build IPA
+  script: |
+    flutter build ipa --release --export-method app-store --build-name=1.0.0 --build-number=$PROJECT_BUILD_NUMBER
 
     publishing:
       app_store_connect:
