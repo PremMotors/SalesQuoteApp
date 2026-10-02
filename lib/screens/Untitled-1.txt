@@ -1,655 +1,425 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sales_quote_arnexa/screens/login_screen.dart';
-import 'package:sales_quote_arnexa/services/auth_service.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
-import 'package:sales_quote_arnexa/models/price_model.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import 'package:fl_chart/fl_chart.dart';
+import '../theme/app_theme.dart';
+import '../models/models.dart';
+import '../services/api_service.dart';
 
+class DashboardScreen extends StatefulWidget {
+  final ShowroomType showroomType;
+  const DashboardScreen({super.key, required this.showroomType});
 
-
-class CustomerQuoteScreen extends StatefulWidget {
-  
-  final String userName;
-  const CustomerQuoteScreen({super.key, required this.userName});
   @override
-  State<CustomerQuoteScreen> createState() => _CustomerQuoteScreenState();
+  State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _CustomerQuoteScreenState extends State<CustomerQuoteScreen> {
+class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _animController;
+  final fmt = NumberFormat.compact(locale: 'en_IN');
+  final rupee = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
 
-  /// FORM KEY
-  final _formKey = GlobalKey<FormState>();
-   String userName = "";
-   int userId = 0;
-  //  final String modelGroup;
-  /// 🔹 BASIC CONTROLLERS
-  final nameController = TextEditingController();
-  final phoneController = TextEditingController();
-  final emailController = TextEditingController();
-  final cityController = TextEditingController();
+  // ── State ─────────────────────────────────────────────────────────────────
+  bool _loading = true;
+  String? _error;
+  Map<String, dynamic>? _dashData;
 
-  /// 🔹 PRICE CONTROLLERS
-  final exShowroomController = TextEditingController();
-  final txtCorporateOfferController = TextEditingController();
-  final txtInsAmtController = TextEditingController();
-  final txtMGAAmtController = TextEditingController();
-  final txtRTOAmtController = TextEditingController();
-  final txtEWAmountController = TextEditingController();
-  final txtConsumerOfferController = TextEditingController();
-  final txtExchangAmtController = TextEditingController();
-  final txtAddDisController = TextEditingController();
+  bool get isArena => widget.showroomType == ShowroomType.arena;
+  Color get primary => isArena ? AppColors.arenaMidBlue : AppColors.nexaRed;
+  Color get accent => isArena ? AppColors.arenaGold : AppColors.nexaAccent;
+  Color get dark => isArena ? AppColors.arenaNavy : AppColors.nexaCharcoal;
 
-  /// 🔹 FINANCE CONTROLLERS
-  final tenureController = TextEditingController();
-  final interestController = TextEditingController();
-  final loanAmountController = TextEditingController();
-  final emiController = TextEditingController();
-
-  /// 🔹 DROPDOWN VARIABLES
-  String? customerType, model;
-  String? color, profession, corporate, department, parking;
-  String? fastag, insurance, accessories, rto, warranty;
-  String? consumerOffer, exchange, addDiscount;
-  String? financier, bank, financeOn, percent;
-
-  bool isFinance = false;
-
-  /// 🔹 LISTS
-  
-  /// LISTS
-  
-  List<PriceModel> allData = [];
-  List<String> modelList = [];
-  List<String> variantList = [];
-  List<String> variantCodeList = [];
-  List<String> colorList = [];
-  String? selectedVariant;
-  String? selectedVariantCode;
-  String? selectedModel;
-  List<String> departmentList = []; 
-  bool isLoading = false;
-  bool isCorporateEnabled = false;
-  bool isInsuranceEnabled = false;
-  bool isAccessoriesEnabled = false;
-  bool isRTOEnabled = false;
-  bool isWarrantyEnabled = false;
-  bool isConsumerOfferEnabled = false;
-  bool isExchangeEnabled = false;
-  bool isDiscountEnabled = false;
-List<String> corporateList = [];
-double totalOffer = 0;
-  final totalOfferController = TextEditingController();
-
-  /// ================= API LOAD =================
-final AuthService apiService = AuthService();
-void loadData() async {
-  allData = await apiService.getAllData();
-
-  modelList = allData
-      .map((e) => e.modelGroup)
-      .toSet()
-      .toList();
-
-  setState(() {});
-}
-Future<void> onModelChanged(String? v) async {
-  if (v == null) return;
-  setState(() {
-    model = v;
-    variantList = allData
-        .where((e) => e.modelGroup == v)
-        .map((e) => e.description)
-        .toSet()
-        .toList();
-
-    selectedVariant = null;
-    selectedVariantCode = null;
-    departmentList = [];   // 🔥 clear old data
-    department = null;
-    corporateList = [];   // 🔥 clear old data
-    corporate = null;
-  });
-   
-  // 🔥 CALL API AFTER STATE UPDATE
-  await fetchCorporate(v);
-}
-
-void onVariantChanged(String? v) {
-  selectedVariant = v;
-
-  // 🔹 Filter variant codes
-  var filtered = allData
-      .where((e) =>
-          e.modelGroup == model &&
-          e.description == v)
-      .toList();
-
-  variantCodeList = filtered
-      .map((e) => e.modelWithType)
-      .toSet()
-      .toList();
-
-  // 🔥 AUTO FILL Ex Showroom (take first item)
-  if (filtered.isNotEmpty) {
-    exShowroomController.text =
-        filtered.first.exShowroom.toString();
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..forward();
+    _loadDashboard();
   }
 
-  selectedVariantCode = null;
-  colorList = [];
-
-  setState(() {});
-}
-
-void onVariantCodeChanged(String? v) async {
-  if (v == null) return;
-
-  selectedVariantCode = v;
-
-  // 🔥 Load colors from API
-  colorList = await apiService.getColors(v);
-
-  colorList.insert(0, "Select Colour");
-  color = "Select Colour";
-
-  setState(() {});
-}
-
-
-
-
-Future<void> fetchCorporate(String model) async {
-  try {
-    final data = await apiService.getDepartments(model);
-
-    print("DEPARTMENT DATA: $data");
-
-    setState(() {
-      corporateList = data.toSet().toList(); // ✅ सही list
-      corporate = null;                      // reset selection
-    });
-  } catch (e) {
-    print("Error: $e");
-  }
-}
-
-
-Future<void> fetchDepartments(String corporate) async {
-  try {
-    final data = await apiService.GetCorporateByScheme(corporate);
-
-    print("DEPARTMENT DATA: $data");
-
-    setState(() {
-      departmentList = data.toSet().toList(); // remove duplicates
-      department = null; // reset selection
-    });
-  } catch (e) {
-    print("Error: $e");
-  }
-}
-
-
-
-// Future<void> getDepartments(String schemeGroup) async {
-//   final data = await apiService.GetCorporateByScheme(schemeGroup);
-
-
-//   setState(() {
-//     departmentList = data.toSet().toList(); // remove duplicates
-//     department = null; // reset
-//   });
-// }
-
-Future<void> saveData() async {
-  if (!_formKey.currentState!.validate()) return;
-  final body = {
-    "CustName": nameController.text.trim(),
-    "PhoneNo": phoneController.text.trim(),
-    "Email": emailController.text.trim(),
-    "City": cityController.text.trim(),
-    "CustType": customerType,
-    "Model": model,
-    "Variant": selectedVariant,
-    "Model_with_Type": selectedVariantCode,
-    "Colour": color,
-    "Profession": profession,
-    "ExShowroomPrice":
-        double.tryParse(exShowroomController.text) ?? 0,
-    "CorporateName": corporate,
-    "DeptName": department,
-    "MCDParkingCharges": parking == "Yes" ? 1 : 0,
-    "CorporateOffer":
-        double.tryParse(txtCorporateOfferController.text) ?? 0,
-    "InsurancePer": 0,
-    "FastTag": fastag == "Yes" ? 1 : 0,
-    "InsuranceAmt":
-        double.tryParse(txtInsAmtController.text) ?? 0,
-    "AccessoriesPer": 0,
-    "AccessoriesAmt":
-        double.tryParse(txtMGAAmtController.text) ?? 0,
-    "RTOPer": 0,
-    "RTOAmt":
-        double.tryParse(txtRTOAmtController.text) ?? 0,
-    "WarrantyPer": 0,
-    "WarrantyAmt":
-        double.tryParse(txtEWAmountController.text) ?? 0,
-    "ConsumerOffer": 0,
-    "ConsumerOfferAmt":
-        double.tryParse(txtConsumerOfferController.text) ?? 0,
-     "ExchangePer": 0,
-    "ExchangeAmt":
-        double.tryParse(txtExchangAmtController.text) ?? 0,
-    "AdditionalDisAmt":
-        double.tryParse(txtAddDisController.text) ?? 0,
-    "FinanceBank": bank,
-    "Tenure": int.tryParse(tenureController.text) ?? 0,
-    "InterestType": interestController.text,
-    "LoanPer": double.tryParse(
-            percent?.replaceAll("%", "") ?? "0") ??
-        0,
-    "Loanamount":
-        double.tryParse(loanAmountController.text) ?? 0,
-    "EMI": double.tryParse(emiController.text) ?? 0,
-    "IsActive": true
-  };
-
-  final success = await apiService.submitData(body);
-  if (success) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("✅ Data Saved Successfully")),
-    );
-
-    void clearForm() {
-    // 🔹 Text fields
-    nameController.clear();
-    phoneController.clear();
-    emailController.clear();
-    cityController.clear();
-
-    exShowroomController.clear();
-    txtCorporateOfferController.clear();
-    txtInsAmtController.clear();
-    txtMGAAmtController.clear();
-    txtRTOAmtController.clear();
-    txtEWAmountController.clear();
-    txtConsumerOfferController.clear();
-    txtExchangAmtController.clear();
-    txtAddDisController.clear();
-
-    tenureController.clear();
-    interestController.clear();
-    loanAmountController.clear();
-    emiController.clear();
-
-  // 🔹 Dropdowns reset
-  setState(() {
-    customerType = null;
-    model = "Select Model With Fuel";
-    selectedVariant = "Select Variant Name";
-    selectedVariantCode = "Select Variant Code";
-    color = null;
-    profession = null;
-    corporate = null;
-    department = null;
-    parking = null;
-    fastag = null;
-    insurance = null;
-    accessories = null;
-    rto = null;
-    warranty = null;
-    consumerOffer = null;
-    exchange = null;
-    addDiscount = null;
-    financier = null;
-    bank = null;
-    financeOn = null;
-    percent = null;
-    isFinance = false;
-  });
-} // reset form
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("❌ Failed to save data")),
-    );
-  }
-}
-  Future<void> loadInitialData() async {
-  setState(() => isLoading = true);
-
-  if (model != null) {
-    await fetchCorporate(model!);
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
   }
 
-  setState(() => isLoading = false);
-}
-@override
-void initState() {
-  super.initState();
-  loadData();
-  loadUserData();
-  loadInitialData(); // ✅ async handled correctly
-}
-
-
-  List<String> professionList = 
-  [
-    "Select Profession Type",
-    "Farmers", 
-    "HouseWife",
-    "NRI",
-    "Other",
-    "Proprietor/Trade",
-    "Retired",
-    "Salaried Govt.",
-    "Salaried Private",
-    "Student"
-  ];
-
-
-  /// 🔹 TEXTFIELD
- Widget textField(
-  String label,
-  TextEditingController controller, {
-  bool enabled = true,
-  bool isPhone = false,
-  IconData? icon,
-  bool isEmail = false,
-}) {
-  return TextFormField(
-    controller: controller,
-    enabled: enabled,
-    autovalidateMode: AutovalidateMode.onUserInteraction,
-    keyboardType: isPhone ? TextInputType.number : TextInputType.text,
-    inputFormatters: isPhone
-        ? [
-            FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(10),
-          ]
-        : [],
-      decoration: InputDecoration(
-      labelText: label,
-
-      /// 🔥 THIS LINE ADDED
-      prefixIcon: icon != null ? Icon(icon) : null,
-      filled: true,
-      fillColor: enabled ? Colors.white : Colors.grey.shade300,
-      border: OutlineInputBorder(),
-    ),
-    validator: (value) {
-      if (value == null || value.isEmpty) {
-        return "$label required";
+  // ── FETCH REAL DATA ───────────────────────────────────────────────────────
+  Future<void> _loadDashboard() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final result = await ApiService.getDashboard();
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          if (result['success'] == true) {
+            _dashData = result['data'];
+          } else {
+            _error = result['message'] ?? 'Failed to load dashboard';
+          }
+        });
       }
-      if (isPhone && value.length != 10) {
-        return "Phone must be 10 digits";
-      }
-      if (isEmail) {
-        final regex =
-            RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-        if (!regex.hasMatch(value)) {
-          return "Invalid email";
-        }
-      }
-      return null;
-    },
-  );
-}
-
-
-Future<void> loadUserData() async {
-  final prefs = await SharedPreferences.getInstance();
-
-  setState(() {
-    userName = prefs.getString("UserName") ?? "";
-    userId = prefs.getInt("userId") ?? 0;
-  });
-}
-
-  /// 🔹 DROPDOWN
-  Widget dropdown(String label, String? value, List<String> items,
-      Function(String?)? onChange) {
-    return DropdownButtonFormField<String>(
-      isExpanded: true,
-      // value: value,
-      value: items.contains(value) ? value : null,
-      hint: Text(label),
-      items: items
-          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-          .toList(),
-      onChanged: onChange,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(),
-      ),
-    );
+    } catch (e) {
+      if (mounted) setState(() { _loading = false; _error = 'Server connection error'; });
+    }
   }
-
-  /// 🔹 CLEAR FINANCE
-  void clearFinanceFields() {
-    bank = null;
-    financeOn = null;
-    percent = null;
-    tenureController.clear();
-    interestController.clear();
-    loanAmountController.clear();
-    emiController.clear();
-  }
-
-
-  /// ================= LOGOUT Start =================
-  Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const LoginScreen(),
-      ),
-    );
-  }
- /// ================= LOGOUT End =================
- 
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-
-      /// APPBAR
-      appBar: AppBar(
-        backgroundColor: Colors.blue,
-        title: Text(
-        "Welcome ! $userName - $userId",
-        style: const TextStyle(color: Colors.white),
-      ),
-        actions: [
-          TextButton(
-            // onPressed: () {},
-            onPressed: logout,
-            child: const Text(
-              "Logout",
-              style: TextStyle(color: Colors.yellow),
-            ),
-          )
-        ],
-      ),
-
-      backgroundColor: const Color.fromARGB(213, 13, 13, 13),
-
-      /// BODY
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Center(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 900),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFEBD8),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-
-                  Image.asset("assets/images/logo.png", height: 70),
-                  const SizedBox(height: 10),
-
-                  const Text(
-                    "Customer Quotation",
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-
-
-                          dropdown(
-                            "Select Customer Type",
-                            customerType,
-                            ["Select Customer Type", "Individual", "CSD"],
-                            (v) {
-                              setState(() {
-                                customerType = v;
-                              });
-                            },
-                          ),
-                          const SizedBox(height: 20),
-
-
-                          dropdown("Select Model", model, modelList, onModelChanged),
-                          const SizedBox(height: 20),
-
-
-                          dropdown(
-                            "Select Variant",
-                            selectedVariant,
-                            variantList,
-                            onVariantChanged,
-                          ),
-                          const SizedBox(height: 20),
-                          dropdown(
-                            "Variant Code",
-                            selectedVariantCode,
-                            variantCodeList,
-                            onVariantCodeChanged,
-                          ),
-                          const SizedBox(height: 20),
-                          dropdown(
-                            "Select Colour",
-                            color,
-                            colorList,
-                            (v) => setState(() => color = v),
-                          ),
-
-
-                      const SizedBox(height: 20),
-
-                      
-                      textField("Ex Showroom", exShowroomController),
-                      const SizedBox(height: 20),
-
-
-                      dropdown("Profession", profession, professionList,
-                          (v) => setState(() => profession = v)),
-                      const SizedBox(height: 20),
-                     
-
-                    dropdown(
-                      "Select Corporate",
-                      corporateList.contains(corporate) ? corporate : null,
-                      corporateList,
-                      (v) async {
-                        setState(() {
-                          corporate = v;
-                          departmentList = []; // clear old
-                          department = null;
-                        });
-
-                        if (v != null) {
-                          await fetchDepartments(v); // 🔥 CALL API
-                        }
-                      },
-                    ),
-
-                    const SizedBox(height: 20),
-                  dropdown(
-                    "Select Department",
-                    departmentList.contains(department) ? department : null,
-                    departmentList,
-                    (v) async {
-                      if (v == null) return;
-
-                      setState(() {
-                        department = v;
-                        totalOfferController.clear(); // reset
-                      });
-
-                      print("Selected Dept: $v, Model: $model");
-
-                      try {
-                        final offer = await apiService.getTotalOffer(model!, v);
-
-                        print("API OFFER: $offer"); // 🔍 check
-
-                        setState(() {
-                          totalOfferController.text = offer.toString();
-                        });
-                      } catch (e) {
-                        print("ERROR: $e");
-                      }
-                    },
-                  ),
-                      
-                  
-                    const SizedBox(height: 20),   
-                  TextField(
-                  controller: totalOfferController,
-                  readOnly: true,
-                  decoration: const InputDecoration(
-                    labelText: "Total Offer",
-                    prefixText: "₹ ",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-
-
-                  Row(
-                  mainAxisAlignment: MainAxisAlignment.end, 
-                  children: [
-                    ElevatedButton(
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          saveData();
-                        }
-                      },
-                      child: const Text("Submit"),
-                    ),
-
-                    const SizedBox(width: 10), // spacing
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      backgroundColor: AppColors.background,
+      body: _loading
+          ? _buildSkeleton()
+          : _error != null
+              ? _buildError()
+              : CustomScrollView(
+                  slivers: [
+                    _buildSliverAppBar(),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildTodayBanner(),
+                            const SizedBox(height: 20),
+                            _buildKpiGrid(),
+                            const SizedBox(height: 24),
+                            _buildTargetProgress(),
+                            const SizedBox(height: 24),
+                            _buildRevenueChart(),
+                            const SizedBox(height: 24),
+                            _buildRecentQuotes(),
+                            const SizedBox(height: 100),
+                          ],
+                        ),
                       ),
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          // generatePdf();
-                        }
-                      },
-                      child: const Text("Preview"),
                     ),
                   ],
-                )
+                ),
+    );
+  }
 
+  Widget _buildSkeleton() => const Center(child: CircularProgressIndicator());
 
-                ],
-              ),
+  Widget _buildError() => Center(
+    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      Icon(Icons.wifi_off_rounded, size: 60, color: AppColors.textSecondary.withOpacity(0.4)),
+      const SizedBox(height: 16),
+      Text(_error!, style: GoogleFonts.poppins(color: AppColors.textSecondary)),
+      const SizedBox(height: 16),
+      ElevatedButton.icon(
+        onPressed: _loadDashboard,
+        icon: const Icon(Icons.refresh_rounded),
+        label: const Text('Retry'),
+        style: ElevatedButton.styleFrom(backgroundColor: primary),
+      ),
+    ]),
+  );
+
+  Widget _buildSliverAppBar() {
+    final fullName = ApiService.currentUserName ?? 'Consultant';
+    final initials = fullName.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join();
+
+    return SliverAppBar(
+      expandedHeight: 160, floating: false, pinned: true, backgroundColor: dark,
+      flexibleSpace: FlexibleSpaceBar(
+        background: Container(
+          decoration: BoxDecoration(gradient: isArena ? AppColors.arenaGradient : AppColors.nexaGradient),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Good ${_greeting()},',
+                        style: GoogleFonts.poppins(color: Colors.white.withOpacity(0.7), fontSize: 13)),
+                    Text('$fullName 👋',
+                        style: GoogleFonts.montserrat(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+                  ]),
+                  Container(
+                    width: 38, height: 38,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle, color: accent.withOpacity(0.2),
+                      border: Border.all(color: accent.withOpacity(0.5))),
+                    child: Center(child: Text(initials,
+                        style: GoogleFonts.montserrat(color: accent, fontSize: 12, fontWeight: FontWeight.w700))),
+                  ),
+                ]),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(color: accent.withOpacity(0.15), borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: accent.withOpacity(0.3))),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(isArena ? Icons.store_rounded : Icons.star_rounded, color: accent, size: 14),
+                    const SizedBox(width: 6),
+                    Text(isArena ? 'Arena Showroom' : 'Nexa Showroom',
+                        style: GoogleFonts.poppins(color: accent, fontSize: 12, fontWeight: FontWeight.w600)),
+                  ]),
+                ),
+              ]),
             ),
           ),
         ),
       ),
+      title: Text(isArena ? 'ARENA' : 'NEXA',
+          style: GoogleFonts.montserrat(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16, letterSpacing: 3)),
+      actions: [
+        IconButton(icon: const Icon(Icons.refresh_rounded, color: Colors.white), onPressed: _loadDashboard),
+      ],
+    );
+  }
+
+  String _greeting() {
+    final h = DateTime.now().hour;
+    if (h < 12) return 'Morning';
+    if (h < 17) return 'Afternoon';
+    return 'Evening';
+  }
+
+  Widget _buildTodayBanner() {
+    final todayEnquiries = _dashData?['todayEnquiries'] ?? 0;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [primary.withOpacity(0.1), primary.withOpacity(0.05)]),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: primary.withOpacity(0.2)),
+      ),
+      child: Row(children: [
+        Container(padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+            child: Icon(Icons.calendar_today_rounded, color: primary, size: 20)),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(DateFormat('EEEE, d MMMM yyyy').format(DateTime.now()),
+              style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+          Text('$todayEnquiries new enquiries today',
+              style: GoogleFonts.poppins(fontSize: 12, color: AppColors.textSecondary)),
+        ])),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(color: AppColors.success.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+          child: Text('+$todayEnquiries',
+              style: GoogleFonts.poppins(color: AppColors.success, fontSize: 13, fontWeight: FontWeight.w700)),
+        ),
+      ]),
+    );
+  }
+
+  Widget _buildKpiGrid() {
+    final total = _dashData?['totalQuotes'] ?? 0;
+    final converted = _dashData?['convertedQuotes'] ?? 0;
+    final pending = _dashData?['pendingQuotes'] ?? 0;
+    final revenue = (_dashData?['totalRevenue'] ?? 0).toDouble();
+
+    return GridView.count(
+      crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 14, mainAxisSpacing: 14, childAspectRatio: 1.4,
+      children: [
+        _kpiCard('Total Quotes', total.toString(), Icons.receipt_long_rounded, primary, '+12%'),
+        _kpiCard('Converted', converted.toString(), Icons.check_circle_rounded, AppColors.success, '+8%'),
+        _kpiCard('Pending', pending.toString(), Icons.pending_rounded, AppColors.warning, ''),
+        _kpiCard('Revenue', '₹${fmt.format(revenue)}', Icons.currency_rupee_rounded, AppColors.nexaRed, '+15%'),
+      ],
+    );
+  }
+
+  Widget _kpiCard(String title, String value, IconData icon, Color color, String change) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface, borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 2))],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Container(padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+              child: Icon(icon, color: color, size: 18)),
+          if (change.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(color: AppColors.success.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+              child: Text(change, style: GoogleFonts.poppins(color: AppColors.success, fontSize: 10, fontWeight: FontWeight.w600)),
+            ),
+        ]),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(value, style: GoogleFonts.montserrat(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+          Text(title, style: GoogleFonts.poppins(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+        ]),
+      ]),
+    );
+  }
+
+  Widget _buildTargetProgress() {
+    final totalRevenue = (_dashData?['totalRevenue'] ?? 0).toDouble();
+    final monthlyTarget = (_dashData?['monthlyTarget'] ?? 3500000).toDouble();
+    final targetAchieved = (_dashData?['targetAchieved'] ?? 0).toDouble();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: isArena ? AppColors.arenaGradient : AppColors.nexaGradient,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: dark.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Monthly Target', style: GoogleFonts.poppins(color: Colors.white.withOpacity(0.7), fontSize: 12)),
+            Text(rupee.format(monthlyTarget),
+                style: GoogleFonts.montserrat(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
+          ]),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Text('Achieved', style: GoogleFonts.poppins(color: Colors.white.withOpacity(0.7), fontSize: 12)),
+            Text('${targetAchieved.toStringAsFixed(1)}%',
+                style: GoogleFonts.montserrat(color: accent, fontSize: 20, fontWeight: FontWeight.w700)),
+          ]),
+        ]),
+        const SizedBox(height: 16),
+        Stack(children: [
+          Container(height: 8, decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(4))),
+          AnimatedBuilder(
+            animation: _animController,
+            builder: (_, __) => FractionallySizedBox(
+              widthFactor: ((targetAchieved / 100).clamp(0.0, 1.0)) * _animController.value,
+              child: Container(height: 8,
+                  decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [accent, accent.withOpacity(0.7)]),
+                      borderRadius: BorderRadius.circular(4))),
+            ),
+          ),
+        ]),
+        const SizedBox(height: 10),
+        Text('${rupee.format(totalRevenue)} of ${rupee.format(monthlyTarget)} achieved',
+            style: GoogleFonts.poppins(color: Colors.white.withOpacity(0.6), fontSize: 11)),
+      ]),
+    );
+  }
+
+  Widget _buildRevenueChart() {
+    final monthlyData = (_dashData?['monthlyData'] as List?) ?? [];
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface, borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 2))],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text('Revenue Trend', style: GoogleFonts.montserrat(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(20)),
+            child: Text('6 Months', style: GoogleFonts.poppins(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+          ),
+        ]),
+        const SizedBox(height: 20),
+        SizedBox(
+          height: 160,
+          child: monthlyData.isEmpty
+              ? Center(child: Text('No data', style: GoogleFonts.poppins(color: AppColors.textSecondary)))
+              : BarChart(BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: 5000000,
+                  barTouchData: BarTouchData(enabled: false),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    bottomTitles: AxisTitles(sideTitles: SideTitles(
+                      showTitles: true, reservedSize: 24,
+                      getTitlesWidget: (value, meta) {
+                        final i = value.toInt();
+                        if (i < monthlyData.length) {
+                          return Text(monthlyData[i]['month'] ?? '',
+                              style: GoogleFonts.poppins(fontSize: 10, color: AppColors.textSecondary));
+                        }
+                        return const SizedBox();
+                      },
+                    )),
+                    leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  ),
+                  gridData: FlGridData(
+                    show: true, drawVerticalLine: false, horizontalInterval: 1000000,
+                    getDrawingHorizontalLine: (_) => FlLine(color: AppColors.divider, strokeWidth: 1, dashArray: [4, 4]),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  barGroups: monthlyData.asMap().entries.map((entry) {
+                    final revenue = (entry.value['revenue'] ?? 0).toDouble();
+                    return BarChartGroupData(x: entry.key, barRods: [
+                      BarChartRodData(
+                        toY: revenue,
+                        gradient: LinearGradient(colors: [primary, primary.withOpacity(0.6)],
+                            begin: Alignment.topCenter, end: Alignment.bottomCenter),
+                        width: 28, borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                        backDrawRodData: BackgroundBarChartRodData(show: true, toY: 5000000, color: AppColors.background),
+                      ),
+                    ]);
+                  }).toList(),
+                )),
+        ),
+      ]),
+    );
+  }
+
+  Widget _buildRecentQuotes() {
+    final recentQuotes = (_dashData?['recentQuotes'] as List?) ?? [];
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text('Recent Quotes', style: GoogleFonts.montserrat(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+        TextButton(onPressed: () {}, child: Text('View All',
+            style: GoogleFonts.poppins(color: primary, fontSize: 12, fontWeight: FontWeight.w600))),
+      ]),
+      const SizedBox(height: 12),
+      if (recentQuotes.isEmpty)
+        Center(child: Text('No quotes yet', style: GoogleFonts.poppins(color: AppColors.textSecondary)))
+      else
+        ...recentQuotes.map((q) => _quoteItem(q)),
+    ]);
+  }
+
+  Widget _quoteItem(Map<String, dynamic> q) {
+    final status = q['status'] ?? 'Draft';
+    final statusColor = {
+      'Draft': AppColors.textSecondary, 'Pending': AppColors.warning,
+      'Approved': AppColors.success, 'Rejected': AppColors.error, 'Converted': primary,
+    }[status] ?? AppColors.textSecondary;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface, borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Row(children: [
+        Container(
+          width: 44, height: 44,
+          decoration: BoxDecoration(color: primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+          child: Center(child: Text(
+            (q['customerName'] as String? ?? '?').isNotEmpty ? (q['customerName'] as String)[0] : '?',
+            style: GoogleFonts.montserrat(fontSize: 18, fontWeight: FontWeight.w700, color: primary))),
+        ),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(q['customerName'] ?? '', style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+          Text('${q['vehicleName']} ${q['vehicleVariant']} • ${q['quoteNumber']}',
+              style: GoogleFonts.poppins(fontSize: 11, color: AppColors.textSecondary)),
+        ])),
+        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Text(rupee.format((q['totalOnRoad'] ?? 0).toDouble()),
+              style: GoogleFonts.montserrat(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+            child: Text(status, style: GoogleFonts.poppins(color: statusColor, fontSize: 10, fontWeight: FontWeight.w600)),
+          ),
+        ]),
+      ]),
     );
   }
 }

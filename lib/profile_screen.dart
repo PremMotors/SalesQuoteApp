@@ -62,7 +62,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           onPressed: () {
             // ApiService.logout(); // ← clear session
             Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const LoginScreen()),
+              MaterialPageRoute(builder: (_) => const LoginPage()),
               (_) => false,
             );
           },

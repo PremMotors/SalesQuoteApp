@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../models/models.dart';
-import 'screens/dashboard_screen.dart';
+// import 'screens/dashboard_screen.dart';
 import 'quotes_screen.dart';
 import 'new_quote_screen.dart';
 import 'screens/customers_screen.dart';
@@ -11,7 +11,18 @@ export '../models/models.dart';
 
 class MainShell extends StatefulWidget {
   final ShowroomType showroomType;
-  const MainShell({super.key, required this.showroomType});
+   final String userName;
+  final String userId;
+  final String teamLeaderName;
+  final String teamLeaderCont;
+
+  const MainShell({
+    super.key, 
+  required this.showroomType,
+  required this.userName,
+  required this.userId,
+  required this.teamLeaderName,
+  required this.teamLeaderCont});
 
   @override
   State<MainShell> createState() => _MainShellState();
@@ -29,7 +40,10 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     _fabController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
     _fabController.forward();
     _screens = [
-      DashboardScreen(showroomType: widget.showroomType),
+    //   LoginPage(
+      
+    // ),
+      // DriverHomeScreen(showroomType: widget.showroomType),
       QuotesScreen(showroomType: widget.showroomType),
       NewQuoteScreen(showroomType: widget.showroomType),
       CustomersScreen(showroomType: widget.showroomType),

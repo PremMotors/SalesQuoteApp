@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pmpl_salesquote/theme/app_theme.dart';
-import 'package:pmpl_salesquote/screens/login_screen.dart';
-import 'package:pmpl_salesquote/screens/customer_quote_screen.dart';
+// import 'package:pmpl_salesquote/screens/login_screen.dart';
+// import 'package:pmpl_salesquote/screens/customer_quote_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+// import 'package:pmpl_salesquote/screens/dashboard_screen.dart';
+import 'package:pmpl_salesquote/splash/splash_screen.dart';
+import 'package:pmpl_salesquote/screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,15 +31,41 @@ class SalesQuoteApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'SalesQuote ArNexa',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
 
-      // 🔹 LOGIN CHECK
-      home: isLogin
-          ? CustomerQuoteScreen(userName: "", teamLeaderName: "", teamLeaderCont: "")
-          : const LoginScreen(),
-    );
+return MaterialApp(
+  title: 'SalesQuote ArNexa',
+  debugShowCheckedModeBanner: false,
+  theme: AppTheme.light,
+
+  home: SplashScreen(
+    isLogin: isLogin,
+  ),
+);
+    // return MaterialApp(
+    //   title: 'SalesQuote ArNexa',
+    //   debugShowCheckedModeBanner: false,
+    //   theme: AppTheme.light,
+
+    //   // 🔹 LOGIN CHECK
+    //   // home: isLogin
+    //   //     ? CustomerQuoteScreen(userName: "", teamLeaderName: "", teamLeaderCont: "")
+    //   //     : const LoginScreen(),
+
+
+    //   home: isLogin
+    //       ? DashboardScreen(
+    //           userName: "",
+              
+    //           userId: "",
+    //           teamLeaderName: "",
+    //           teamLeaderCont: "",
+    //         )
+    //       : const LoginScreen(),
+    // );
+
+
+
+
+
   }
 }
