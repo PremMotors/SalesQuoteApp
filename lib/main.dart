@@ -33,7 +33,7 @@ class SalesQuoteApp extends StatelessWidget {
   Widget build(BuildContext context) {
 
 return MaterialApp(
-  title: 'SalesQuote ArNexa',
+  title: 'Sales Quote ',
   debugShowCheckedModeBanner: false,
   theme: AppTheme.light,
 

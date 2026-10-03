@@ -15,8 +15,8 @@ class QuotationApiService  {
   //
   // ============================================================
 
-  // static const String baseUrl = "https://premerp.in/salesquote";
-  static const String baseUrl = "http://103.168.210.85:4005/api";
+  static const String baseUrl = "https://premerp.in/salesquote";
+  // static const String baseUrl = "http://103.168.210.85:4005/api";
 
   // ============================================================
   // GET REQUEST

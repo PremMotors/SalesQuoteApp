@@ -5,9 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
 class AuthService {
-  // static const String baseUrl = 'https://premerp.in/salesquote/api';
+  static const String baseUrl = 'https://premerp.in/salesquote';
   // static const String baseUrl = 'https://192.168.2.247:4005/api';
-  static const String baseUrl = "http://103.168.210.85:4005/api";
+  // static const String baseUrl = "http://103.168.210.85:4005/api";
 
   
 
@@ -17,7 +17,7 @@ Future<Map<String, dynamic>?> login(
 ) async {
   try {
     final url = Uri.parse(
-      "$baseUrl/login",
+      "$baseUrl/api/login",
     );
 
     final response = await http.post(

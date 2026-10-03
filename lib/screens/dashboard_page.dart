@@ -191,8 +191,8 @@ class _DashboardPageState extends State<DashboardPage> {
       );
 
       final uri = Uri.parse(
-        // "https://premerp.in/salesquote/api/dashboard-summary",
-        "http://103.168.210.85:4005/api/dashboard-summary",
+        "https://premerp.in/salesquote/api/dashboard-summary",
+        // "http://103.168.210.85:4005/api/dashboard-summary",
 
       ).replace(
         queryParameters: {
@@ -375,8 +375,8 @@ class _DashboardPageState extends State<DashboardPage> {
       );
 
       final uri = Uri.parse(
-        // "https://premerp.in/salesquote/api/quotations",
-        "http://103.168.210.85:4005/api/quotations",
+        "https://premerp.in/salesquote/api/quotations",
+        // "http://103.168.210.85:4005/api/quotations",
         
       ).replace(
         queryParameters: {
